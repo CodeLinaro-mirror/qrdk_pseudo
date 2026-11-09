@@ -11,6 +11,9 @@ environment, allowing ordinary users to run commands which give the illusion
 of creating device nodes, changing file ownership, and otherwise doing
 things necessary for creating distribution packages or filesystems.
 
+pseudo is not a security boundary and must not be used in security
+sensitive applications.  See README.security for details.
+
 Building pseudo requires GCC 5 or later (or clang), which the configure
 script checks for.
 
