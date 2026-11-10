@@ -58,7 +58,7 @@ for arg
 do
     case "$arg" in
     --disable-*)
-        arg="--enable-${arg%--disable-}=no"
+        arg="--enable-${arg#--disable-}=no"
 	;;
     esac
     case "$arg" in
