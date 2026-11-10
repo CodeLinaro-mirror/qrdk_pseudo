@@ -30,6 +30,7 @@ extern int pseudo_client_shutdown(int);
 extern int pseudo_fd(int fd, int how);
 extern int pseudo_client_path_lock(int shared);
 extern void pseudo_client_path_unlock(int fd);
+extern int pseudo_client_path_matches_fd(const char *path, int fd, int nofollow);
 #define MOVE_FD	0
 #define COPY_FD	1
 #define PSEUDO_MIN_FD	20
@@ -53,6 +54,8 @@ extern FILE *pseudo_grp;
 
 /* pseudo_wrappers will try to initialize these */
 extern int (*pseudo_real_lstat)(const char *path, PSEUDO_STATBUF *buf);
+extern int (*pseudo_real_fstat)(int fd, PSEUDO_STATBUF *buf);
+extern int (*pseudo_real_stat)(const char *path, PSEUDO_STATBUF *buf);
 extern int (*pseudo_real_fork)(void);
 extern int (*pseudo_real_execv)(const char *, char * const *);
 

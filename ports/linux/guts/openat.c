@@ -148,9 +148,15 @@
 		if (stat_rc != -1) {
 			buf.st_mode = PSEUDO_DB_MODE(buf.st_mode, mode);
 			if (!existed) {
+				int path_lock_fd = pseudo_client_path_lock(0);
 				real_fchmod(rc, PSEUDO_FS_MODE(mode, 0));
 				// file has no path, but has been created
-				pseudo_client_op(OP_CREAT, 0, -1, dirfd, path, &buf);
+				if (pseudo_client_path_matches_fd(path, rc, flags & O_NOFOLLOW) &&
+				    real___fxstat64(_STAT_VER, rc, &buf) != -1) {
+					buf.st_mode = PSEUDO_DB_MODE(buf.st_mode, mode);
+					pseudo_client_op(OP_CREAT, 0, -1, dirfd, path, &buf);
+				}
+				pseudo_client_path_unlock(path_lock_fd);
 			}
 				pseudo_client_op(OP_OPEN, PSEUDO_ACCESS(flags), rc, dirfd, path, &buf);
 		} else {

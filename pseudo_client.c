@@ -1249,6 +1249,31 @@ pseudo_client_path_unlock(int fd) {
 	errno = save_errno;
 }
 
+/* Operations that can block, such as open() on a FIFO, can't hold the path
+ * lock across the real call.  Instead they take the lock afterwards and
+ * check that the path still names the file they opened before recording
+ * it.  With the lock held, no other client is part way through changing the
+ * path, so if it now names a different file, that client has already
+ * recorded the change, and recording ours would be wrong.
+ */
+int
+pseudo_client_path_matches_fd(const char *path, int fd, int nofollow) {
+	PSEUDO_STATBUF pbuf, fbuf;
+	int save_errno = errno;
+	int rc;
+
+	if (!path || fd < 0 || !pseudo_real_fstat || !pseudo_real_lstat || !pseudo_real_stat)
+		return 1;
+	rc = pseudo_real_fstat(fd, &fbuf) == 0 &&
+	     (nofollow ? pseudo_real_lstat(path, &pbuf) : pseudo_real_stat(path, &pbuf)) == 0 &&
+	     pbuf.st_dev == fbuf.st_dev && pbuf.st_ino == fbuf.st_ino;
+	if (!rc)
+		pseudo_debug(PDBGF_FILE, "'%s' no longer names fd %d, not recording it.\n",
+			path, fd);
+	errno = save_errno;
+	return rc;
+}
+
 static int
 client_connect(void) {
 	/* we have a server pid, is it responsive? */

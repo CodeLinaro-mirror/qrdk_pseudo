@@ -21,8 +21,11 @@
 		pseudo_debug(PDBGF_FILE, "freopen64 '%s': fd %d\n", path, fd);
 		if (real___fxstat64(_STAT_VER, fd, &buf) != -1) {
 			if (!existed) {
+				int path_lock_fd = pseudo_client_path_lock(0);
 				real_fchmod(fd, PSEUDO_FS_MODE(0666 & ~pseudo_umask, 0));
-				pseudo_client_op(OP_CREAT, 0, -1, -1, path, &buf);
+				if (pseudo_client_path_matches_fd(path, fd, 0))
+					pseudo_client_op(OP_CREAT, 0, -1, -1, path, &buf);
+				pseudo_client_path_unlock(path_lock_fd);
 			}
 			pseudo_client_op(OP_OPEN, pseudo_access_fopen(mode), fd, -1, path, &buf);
 		} else {
