@@ -100,6 +100,7 @@ extern char *pseudo_get_bindir(void);
 extern char *pseudo_get_libdir(void);
 extern char *pseudo_get_localstatedir(void);
 extern int pseudo_debug_logfile(char *defname, int prefer_fd);
+extern int pseudo_evlog_logfile(char *defname, int prefer_fd);
 extern ssize_t pseudo_sys_path_max(void);
 extern ssize_t pseudo_path_max(void);
 #define PSEUDO_PWD_MAX 4096

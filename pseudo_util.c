@@ -1738,7 +1738,6 @@ pseudo_logfile(char *filename, char *defname, int prefer_fd) {
 				fd = newfd;
 			}
 		}
-		pseudo_util_debug_fd = fd;
 	}
 	free(pseudo_path);
 	return fd;

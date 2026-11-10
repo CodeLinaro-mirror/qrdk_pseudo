@@ -2152,8 +2152,13 @@ pseudo_client_op(pseudo_op_t op, int access, int fd, int dirfd, const char *path
 				if (connect_fd == -1) {
 					pseudo_error("tried to close connection, couldn't dup: %s\n", strerror(errno));
 				}
-			} else if (fd == pseudo_util_debug_fd) {
-				pseudo_util_debug_fd = pseudo_fd(fd, COPY_FD);
+			} else if (fd == pseudo_util_debug_fd || fd == pseudo_util_evlog_fd) {
+				/* both are stderr by default */
+				int newfd = pseudo_fd(fd, COPY_FD);
+				if (fd == pseudo_util_debug_fd)
+					pseudo_util_debug_fd = newfd;
+				if (fd == pseudo_util_evlog_fd)
+					pseudo_util_evlog_fd = newfd;
 			} else if (fd == pseudo_localstate_dir_fd) {
 				pseudo_localstate_dir_fd = pseudo_fd(fd, COPY_FD);
 			} else if (fd == pseudo_pathlock_fd) {

@@ -9,10 +9,10 @@ libpseudo execution flow:
 	pseudo_wrappers.c: (constructor) _libpseudo_init()
 		pseudo_util.c: pseudo_init_util()
 			copy environment
-			setup PSEUDO_DEBUG levels
+			setup PSEUDO_DEBUG, PSEUDO_EVLOG and PSEUDO_SEVERITY flags
 		pseudo_wrappers.c: pseudo_init_wrappers()
 			setup pseudo_functions
-			setup pseudo_logfile
+			setup log files (PSEUDO_DEBUG_FILE, PSEUDO_EVLOG_FILE)
 		pseudo_client.c: pseudo_init_client()
 			setup PSEUDO_DISABLED
 			setup pseudo_localstate_dir_fd
