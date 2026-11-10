@@ -11,27 +11,13 @@
 	pseudo_msg_t *msg;
 	int save_errno;
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (dirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-#endif
 	if (flags & AT_SYMLINK_NOFOLLOW) {
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		rc = real___lxstat64(ver, path, buf);
-#else
 		rc = real___fxstatat64(ver, dirfd, path, buf, flags);
-#endif
 		if (rc == -1) {
 			return rc;
 		}
 	} else {
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		rc = real___xstat64(ver, path, buf);
-#else
 		rc = real___fxstatat64(ver, dirfd, path, buf, flags);
-#endif
 		if (rc == -1) {
 			return rc;
 		}

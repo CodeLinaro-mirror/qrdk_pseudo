@@ -135,23 +135,16 @@ extern char *pseudo_version;
 
 #define PSEUDO_SEVERITY_DEFAULT "info,warn,error"
 
-/* some systems might not have *at().  We like to define operations in
- * terms of each other, and for instance, open(...) is the same as
- * openat(AT_FDCWD, ...).  If no AT_FDCWD is provided, any value that can't
- * be a valid file descriptor will do.  Using -2 because -1 could be
- * mistaken for a failed syscall return.  AT_SYMLINK_NOFOLLOW has to be
- * non-zero; AT_SYMLINK_FOLLOW has to be non-zero and different.  Finally,
- * if this happened, we set our own flag we can use to indicate that dummy
- * implementations of the _at functions are needed.
+/* pseudo defines operations in terms of each other; for instance,
+ * open(...) is the same as openat(AT_FDCWD, ...).  This requires the *at()
+ * functions and AT_FDCWD, AT_SYMLINK_NOFOLLOW and AT_SYMLINK_FOLLOW from
+ * <fcntl.h>.
  */
 #ifndef AT_FDCWD
-#define AT_FDCWD -2
-#define AT_SYMLINK_NOFOLLOW 1
-#define AT_SYMLINK_FOLLOW 2
-#define PSEUDO_NO_REAL_AT_FUNCTIONS
+#error "pseudo requires *at() function support (AT_FDCWD, AT_SYMLINK_NOFOLLOW, AT_SYMLINK_FOLLOW)"
 #endif
 
-/* Likewise, someone might not have O_LARGEFILE (the flag equivalent to
+/* Someone might not have O_LARGEFILE (the flag equivalent to
  * using open64()).  Since open64() is the same as O_LARGEFILE in flags,
  * we implement it that way... If the system has no O_LARGEFILE, we'll
  * just call open() with nothing special.

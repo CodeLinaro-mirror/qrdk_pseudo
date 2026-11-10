@@ -44,7 +44,7 @@
 	/* mask out mode bits appropriately */
 	my_how.mode = my_how.mode & ~pseudo_umask;
 
-#if defined(PSEUDO_NO_REAL_AT_FUNCTIONS) || ! defined(SYS_openat2)
+#ifndef SYS_openat2
 	if (dirfd != AT_FDCWD) {
 		errno = ENOSYS;
 		return -1;
@@ -81,15 +81,7 @@
 	/* note "else" in #ifdef O_TMPFILE above */
 	if (my_how.flags & O_CREAT) {
 		save_errno = errno;
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		if (my_how.flags & O_NOFOLLOW) {
-			rc = real___lxstat64(_STAT_VER, pseudo_path, &buf);
-		} else {
-			rc = real___xstat64(_STAT_VER, pseudo_path, &buf);
-		}
-#else
 		rc = real___fxstatat64(_STAT_VER, dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
-#endif
 		existed = (rc != -1);
 		if (!existed)
 			pseudo_debug(PDBGF_FILE, "openat2_creat: %s -> 0%lld\n", pseudo_path, my_how.mode);
@@ -102,15 +94,7 @@
 	 */
 	if (!(my_how.flags & O_NONBLOCK) && ((my_how.flags & (O_WRONLY | O_RDONLY | O_RDWR)) != O_RDWR)) {
 		save_errno = errno;
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		if (my_how.flags & O_NOFOLLOW) {
-			rc = real___lxstat64(_STAT_VER, pseudo_path, &buf);
-		} else {
-			rc = real___xstat64(_STAT_VER, pseudo_path, &buf);
-		}
-#else
 		rc = real___fxstatat64(_STAT_VER, dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
-#endif
 		if (rc != -1 && S_ISFIFO(buf.st_mode)) {
 			overly_magic_nonblocking = 1;
 		}
@@ -126,7 +110,7 @@
 	 * is if a file is going to be created, in which case it's
 	 * not a directory.
 	 */
-#if defined(PSEUDO_NO_REAL_AT_FUNCTIONS) || ! defined(SYS_openat2)
+#ifndef SYS_openat2
 	pseudo_debug(PDBGF_SYSCALL, "openat2, calling open.\n");
 	rc = real_open(path, my_how.flags, PSEUDO_FS_MODE(my_how.mode, 0));
 #else
@@ -167,15 +151,7 @@
 			return rc;
 		}
 #endif
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		if (my_how.flags & O_NOFOLLOW) {
-			stat_rc = real___lxstat64(_STAT_VER, pseudo_path, &buf);
-		} else {
-			stat_rc = real___xstat64(_STAT_VER, pseudo_path, &buf);
-		}
-#else
 		stat_rc = real___fxstatat64(_STAT_VER, dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
-#endif
 
 		pseudo_debug(PDBGF_FILE, "openat2(path %s), flags %lld, stat rc %d, stat mode %o\n",
 			pseudo_path, my_how.flags, stat_rc, buf.st_mode);

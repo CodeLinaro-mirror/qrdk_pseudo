@@ -10,19 +10,7 @@
  */
 	PSEUDO_STATBUF buf;
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (dirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-	if (flags & AT_SYMLINK_NOFOLLOW) {
-		rc = base_lstat(path, &buf);
-	} else {
-		rc = base_stat(path, &buf);
-	}
-#else
 	rc = base_fstatat(dirfd, path, &buf, flags & AT_SYMLINK_NOFOLLOW);
-#endif
 	if (rc == -1)
 		return rc;
 

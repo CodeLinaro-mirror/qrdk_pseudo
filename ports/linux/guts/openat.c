@@ -17,13 +17,6 @@
 	/* mask out mode bits appropriately */
 	mode = mode & ~pseudo_umask;
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (dirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-#endif
-
 #ifdef PSEUDO_FORCE_ASYNC
         /* Yes, I'm aware that every Linux system I've seen has
          * DSYNC and RSYNC being the same value as SYNC.
@@ -54,15 +47,7 @@
 	/* note "else" in #ifdef O_TMPFILE above */
 	if (flags & O_CREAT) {
 		save_errno = errno;
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		if (flags & O_NOFOLLOW) {
-			rc = real___lxstat64(_STAT_VER, path, &buf);
-		} else {
-			rc = real___xstat64(_STAT_VER, path, &buf);
-		}
-#else
 		rc = real___fxstatat64(_STAT_VER, dirfd, path, &buf, (flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
-#endif
 		existed = (rc != -1);
 		if (!existed)
 			pseudo_debug(PDBGF_FILE, "openat_creat: %s -> 0%o\n", path, mode);
@@ -75,15 +60,7 @@
 	 */
 	if (!(flags & O_NONBLOCK) && ((flags & (O_WRONLY | O_RDONLY | O_RDWR)) != O_RDWR)) {
 		save_errno = errno;
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		if (flags & O_NOFOLLOW) {
-			rc = real___lxstat64(_STAT_VER, path, &buf);
-		} else {
-			rc = real___xstat64(_STAT_VER, path, &buf);
-		}
-#else
 		rc = real___fxstatat64(_STAT_VER, dirfd, path, &buf, (flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
-#endif
 		if (rc != -1 && S_ISFIFO(buf.st_mode)) {
 			overly_magic_nonblocking = 1;
 		}
@@ -99,11 +76,7 @@
 	 * is if a file is going to be created, in which case it's
 	 * not a directory.
 	 */
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	rc = real_open(path, flags, PSEUDO_FS_MODE(mode, 0));
-#else
 	rc = real_openat(dirfd, path, flags, PSEUDO_FS_MODE(mode, 0));
-#endif
 	if (overly_magic_nonblocking) {
 		save_errno = errno;
 		sigprocmask(SIG_SETMASK, &local_saved_sigmask, NULL);
@@ -132,15 +105,7 @@
 			return rc;
 		}
 #endif
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		if (flags & O_NOFOLLOW) {
-			stat_rc = real___lxstat64(_STAT_VER, path, &buf);
-		} else {
-			stat_rc = real___xstat64(_STAT_VER, path, &buf);
-		}
-#else
 		stat_rc = real___fxstatat64(_STAT_VER, dirfd, path, &buf, (flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
-#endif
 
 		pseudo_debug(PDBGF_FILE, "openat(path %s), flags %o, stat rc %d, stat mode %o\n",
 			path, flags, stat_rc, buf.st_mode);

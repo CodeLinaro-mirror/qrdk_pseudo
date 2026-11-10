@@ -16,29 +16,12 @@
 	/* mask out mode bits appropriately */
 	mode = mode & ~pseudo_umask;
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (dirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-	rc = base_stat(path, &buf);
-#else
 	rc = base_fstatat(dirfd, path, &buf, AT_SYMLINK_NOFOLLOW);
-#endif
 	if (rc != -1) {
 		/* if we can stat the file, you can't mkfifo it */
 		errno = EEXIST;
 		return -1;
 	}
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	rc = real_mkfifo(path, PSEUDO_FS_MODE(mode, 0));
-	if (rc == -1) {
-		return -1;
-	}
-	save_errno = errno;
-	rc = base_stat(path, &buf);
-	real_chmod(path, PSEUDO_FS_MODE(mode, 0));
-#else
 	rc = real_mkfifoat(dirfd, path, PSEUDO_FS_MODE(mode, 0));
 	if (rc == -1) {
 		return -1;
@@ -46,7 +29,6 @@
 	save_errno = errno;
 	rc = base_fstatat(dirfd, path, &buf, AT_SYMLINK_NOFOLLOW);
 	real_fchmodat(dirfd, path, PSEUDO_FS_MODE(mode, 0), 0);
-#endif
 	/* if the stat failed, we are going to give up and nuke
 	 * any file we may have created, and hope for the best.
 	 */
@@ -67,11 +49,7 @@
 	}
 	if (rc == -1) {
                 save_errno = errno;
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		real_unlink(path);
-#else
 		real_unlinkat(dirfd, path, AT_SYMLINK_NOFOLLOW);
-#endif
 		errno = save_errno;
 	}
 

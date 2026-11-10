@@ -21,27 +21,14 @@
         pseudo_debug(PDBGF_FILE, "mknodat creating '%s', mode 0%o\n",
                 path ? path : "<no name>", (int) mode);
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (dirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-	rc = base_stat(path, &buf);
-#else
 	rc = base_fstatat(dirfd, path, &buf, AT_SYMLINK_NOFOLLOW);
-#endif
 	if (rc != -1) {
 		/* if we can stat the file, you can't mknod it */
 		errno = EEXIST;
 		return -1;
 	}
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	rc = real_open(path, O_CREAT | O_WRONLY | O_EXCL,
-		PSEUDO_FS_MODE(mode, 0));
-#else
 	rc = real_openat(dirfd, path, O_CREAT | O_WRONLY | O_EXCL,
 		PSEUDO_FS_MODE(mode, 0));
-#endif
 	if (rc == -1) {
 		return -1;
 	}
@@ -68,11 +55,7 @@
 	}
 	if (rc == -1) {
                 save_errno = errno;
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		real_unlink(path);
-#else
 		real_unlinkat(dirfd, path, AT_SYMLINK_NOFOLLOW);
-#endif
 		errno = save_errno;
 	}
 

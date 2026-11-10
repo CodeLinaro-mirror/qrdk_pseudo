@@ -11,19 +11,7 @@
 	PSEUDO_STATBUF buf;
 	int save_errno = errno;
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (dirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-	if (flags & AT_SYMLINK_NOFOLLOW) {
-	    rc = base_lstat(path, &buf);
-	} else {
-	    rc = base_stat(path, &buf);
-	}
-#else
 	rc = base_fstatat(dirfd, path, &buf, flags);
-#endif
 	if (rc == -1) {
 		return rc;
 	}
@@ -50,13 +38,7 @@
 #endif
 
 	/* user bits added so "root" can always access files. */
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	/* note:  if path was a symlink, and AT_SYMLINK_NOFOLLOW was
-	 * specified, we already bailed previously. */
-	real_chmod(path, PSEUDO_FS_MODE(mode, S_ISDIR(buf.st_mode)));
-#else
 	rc = real_fchmodat(dirfd, path, PSEUDO_FS_MODE(mode, S_ISDIR(buf.st_mode)), flags);
-#endif
 	/* we otherwise ignore failures from underlying fchmod, because pseudo
 	 * may believe you are permitted to change modes that the filesystem
 	 * doesn't. Note that we also don't need to know whether the

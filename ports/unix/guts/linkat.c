@@ -27,12 +27,6 @@
 	
 	rflags = (flags & AT_SYMLINK_FOLLOW) ? 0 : AT_SYMLINK_NOFOLLOW;
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (olddirfd != AT_FDCWD || newdirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-#endif
 	oldpath = oldname;
 	if (oldpath && *oldpath && pseudo_chroot_len && !strncmp(oldpath, pseudo_chroot, pseudo_chroot_len) &&
 		oldpath[pseudo_chroot_len] == '/') {
@@ -54,11 +48,6 @@
 	 */
 #ifdef O_TMPFILE
 	if (!strncmp(oldpath, "/proc/self/fd/", 14) && (flags & AT_SYMLINK_FOLLOW)) {
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-		/* only linkat() lets you do this horrible thing */
-		errno = ENOSYS;
-		return -1;
-#endif
 		tmpfile_fd = pseudo_atoi_wrapper(oldpath + 14);
 		// call actual link
 		rc = real_linkat(AT_FDCWD, oldpath, AT_FDCWD, newpath, AT_SYMLINK_FOLLOW);

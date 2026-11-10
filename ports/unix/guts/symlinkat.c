@@ -17,25 +17,13 @@
 		snprintf(roldname, len, "%s%s", pseudo_chroot, oldname);
 	}
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (dirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-	rc = real_symlink(roldname ? roldname : oldname, newpath);
-#else
 	rc = real_symlinkat(roldname ? roldname : oldname, dirfd, newpath);
-#endif
 
 	if (rc == -1) {
 		free(roldname);
 		return rc;
 	}
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	rc = base_lstat(newpath, &buf);
-#else
 	rc = base_fstatat(dirfd, newpath, &buf, AT_SYMLINK_NOFOLLOW);
-#endif
 	if (rc == -1) {
 		int save_errno = errno;
 		pseudo_warning("symlinkat: couldn't stat '%s' even though symlink creation succeeded (%s).\n",

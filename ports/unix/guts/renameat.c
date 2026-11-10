@@ -20,13 +20,6 @@
 		olddirfd, oldpath ? oldpath : "<nil>",
 		newdirfd, newpath ? newpath : "<nil>");
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	if (olddirfd != AT_FDCWD || newdirfd != AT_FDCWD) {
-		errno = ENOSYS;
-		return -1;
-	}
-#endif
-
 	if (!oldpath || !newpath) {
 		errno = EFAULT;
 		return -1;
@@ -34,13 +27,8 @@
 
 	save_errno = errno;
 
-#ifdef PSEUDO_NO_REAL_AT_FUNCTIONS
-	newrc = base_lstat(newpath, &newbuf);
-	oldrc = base_lstat(oldpath, &oldbuf);
-#else
 	oldrc = base_fstatat(olddirfd, oldpath, &oldbuf, AT_SYMLINK_NOFOLLOW);
 	newrc = base_fstatat(newdirfd, newpath, &newbuf, AT_SYMLINK_NOFOLLOW);
-#endif
 
 	/* nothing to do for a "rename" of a link to itself */
 	if (newrc != -1 && oldrc != -1 &&
