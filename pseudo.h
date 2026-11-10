@@ -155,7 +155,8 @@ extern char *pseudo_version;
  * would ever do that? Well, Linux did, and possibly as a result, linkat()
  * does by default too; if you are on a host with the historical Unix
  * behavior of following symlinks to find the link target, you will want
- * to set this to AT_SYMLINK_FOLLOW.
+ * to set this to AT_SYMLINK_FOLLOW.  0 means not following them; it can't
+ * be AT_SYMLINK_NOFOLLOW, as linkat() rejects that flag.
  */
 #define PSEUDO_LINK_SYMLINK_BEHAVIOR 0
 

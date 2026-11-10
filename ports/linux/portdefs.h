@@ -15,15 +15,6 @@
 #define base_stat real_stat64
 #define base_fstatat(dirfd, path, buf, flags) real___fxstatat64(_STAT_VER, dirfd, path, buf, flags)
 #define PSEUDO_LINKPATH_SEPARATOR " "
-/* Linux NEVER follows symlinks for link(2)... except on old kernels
- * I don't care about.
- */
-#undef PSEUDO_LINK_SYMLINK_BEHAVIOR
-/* Note: 0, here, really means AT_SYMLINK_NOFOLLOW, but specifying that
- * causes errors; you have to leave it empty or specify AT_SYMLINK_FOLLOW.
- */
-#define PSEUDO_LINK_SYMLINK_BEHAVIOR 0
-
 /* There were symbol changes that can cause the linker to request
  * newer versions of glibc, which causes problems occasionally on
  * older hosts if pseudo is built against a newer glibc and then
