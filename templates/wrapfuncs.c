@@ -68,7 +68,7 @@ ${maybe_async_skip}
 		} else {
 			/* exec*() use this to restore the sig mask */
 			pseudo_saved_sigmask = saved;
-			${rc_assign} wrap_$name(${call_args});
+			${path_lock_begin}${rc_assign} wrap_$name(${call_args});${path_lock_end}
 		}
 	}
 	${variadic_end}

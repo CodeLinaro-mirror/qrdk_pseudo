@@ -28,6 +28,8 @@ extern void pseudo_client_touchgid(void);
 extern char *pseudo_client_fdpath(int fd);
 extern int pseudo_client_shutdown(int);
 extern int pseudo_fd(int fd, int how);
+extern int pseudo_client_path_lock(int shared);
+extern void pseudo_client_path_unlock(int fd);
 #define MOVE_FD	0
 #define COPY_FD	1
 #define PSEUDO_MIN_FD	20

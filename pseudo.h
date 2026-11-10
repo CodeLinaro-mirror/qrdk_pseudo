@@ -109,6 +109,7 @@ extern char *pseudo_version;
 
 #define PSEUDO_LOCKFILE "pseudo.lock"
 #define PSEUDO_LOGFILE "pseudo.log"
+#define PSEUDO_PATHLOCK "pseudo.pathlock"
 #define PSEUDO_PIDFILE "pseudo.pid"
 #define PSEUDO_SOCKET "pseudo.socket"
 

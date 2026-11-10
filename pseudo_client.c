@@ -47,6 +47,7 @@ static char *base_path(int dirfd, const char *path, int leave_last);
 static int connect_fd = -1;
 static int server_pid = 0;
 int pseudo_localstate_dir_fd = -1;
+static int pseudo_pathlock_fd = -1;
 int pseudo_pwd_fd = -1;
 int pseudo_pwd_lck_fd = -1;
 char *pseudo_pwd_lck_name = NULL;
@@ -532,6 +533,7 @@ pseudo_init_client(void) {
 		/* Ensure that all of the values are reset */
 		server_pid = 0;
 		pseudo_localstate_dir_fd = -1;
+		pseudo_pathlock_fd = -1;
 		pseudo_pwd_fd = -1;
 		pseudo_pwd_lck_fd = -1;
 		pseudo_pwd_lck_name = NULL;
@@ -1171,6 +1173,80 @@ pseudo_fd(int fd, int how) {
 			strerror(errno));
 
 	return(newfd);
+}
+
+/* Operations such as rename() and unlink() look at the destination, change
+ * it on disk, and then tell the server what happened, in several separate
+ * steps.  Another client doing the same to the same name in between makes
+ * the database describe a file that is no longer there, which the server
+ * reports as an inode or path mismatch.  Wrappers marked path_lock=1 hold
+ * this lock, shared by every client of the server, for the whole sequence.
+ *
+ * fcntl() locks belong to the process, so a forked child does not share
+ * them even though it inherits the descriptor, and they are released if
+ * the process dies.  The descriptor is kept open and protected like
+ * pseudo's other internal descriptors.
+ *
+ * Wrappers that only look at a path (stat() and friends) take the lock
+ * shared: they don't block each other, but can't observe a path between
+ * the change on disk and the database update.
+ *
+ * Returns the descriptor to pass to pseudo_client_path_unlock(), or -1 if
+ * the lock could not be taken, in which case the operation runs unlocked.
+ */
+int
+pseudo_client_path_lock(int shared) {
+	static char *lock_path = NULL;
+	struct flock lk = { .l_type = shared ? F_RDLCK : F_WRLCK, .l_whence = SEEK_SET };
+	int save_errno = errno;
+	int locked = 0, retried = 0;
+
+	pseudo_antimagic();
+	for (;;) {
+		if (pseudo_pathlock_fd == -1) {
+			if (!lock_path)
+				lock_path = pseudo_localstatedir_path(PSEUDO_PATHLOCK);
+			if (lock_path)
+				pseudo_pathlock_fd = pseudo_fd(open(lock_path,
+					O_RDWR | O_CREAT | O_CLOEXEC, 0644), MOVE_FD);
+			if (pseudo_pathlock_fd == -1) {
+				pseudo_debug(PDBGF_CLIENT, "path lock: can't open '%s': %s\n",
+					lock_path ? lock_path : "<nil>", strerror(errno));
+				break;
+			}
+		}
+		if (fcntl(pseudo_pathlock_fd, F_SETLKW, &lk) == 0) {
+			locked = 1;
+			break;
+		}
+		if (errno == EINTR)
+			continue;
+		/* closed behind our back: reopen it once */
+		if (errno == EBADF && !retried) {
+			pseudo_pathlock_fd = -1;
+			retried = 1;
+			continue;
+		}
+		pseudo_debug(PDBGF_CLIENT, "path lock: can't lock '%s': %s\n",
+			lock_path ? lock_path : "<nil>", strerror(errno));
+		break;
+	}
+	pseudo_magic();
+	errno = save_errno;
+	return locked ? pseudo_pathlock_fd : -1;
+}
+
+void
+pseudo_client_path_unlock(int fd) {
+	struct flock lk = { .l_type = F_UNLCK, .l_whence = SEEK_SET };
+	int save_errno = errno;
+
+	if (fd != -1) {
+		pseudo_antimagic();
+		fcntl(fd, F_SETLK, &lk);
+		pseudo_magic();
+	}
+	errno = save_errno;
 }
 
 static int
@@ -1913,6 +1989,8 @@ pseudo_client_op(pseudo_op_t op, int access, int fd, int dirfd, const char *path
 			startfd = pseudo_util_evlog_fd + 1;
 		if (pseudo_localstate_dir_fd >= startfd)
 			startfd = pseudo_localstate_dir_fd + 1;
+		if (pseudo_pathlock_fd >= startfd)
+			startfd = pseudo_pathlock_fd + 1;
 		if (pseudo_pwd_fd >= startfd)
 			startfd = pseudo_pwd_fd + 1;
 		if (pseudo_pwd_lck_fd >= startfd)
@@ -1926,7 +2004,8 @@ pseudo_client_op(pseudo_op_t op, int access, int fd, int dirfd, const char *path
 		 */
 		for (i = fd; i < startfd && i <= close_range_maxfd; ++i) {
 			if (i == pseudo_util_debug_fd || i == pseudo_util_evlog_fd ||
-					i == pseudo_localstate_dir_fd || i == pseudo_pwd_fd ||
+					i == pseudo_localstate_dir_fd || i == pseudo_pathlock_fd ||
+					i == pseudo_pwd_fd ||
 					i == pseudo_pwd_lck_fd || i == pseudo_grp_fd ||
 					i == connect_fd)
 				continue;
@@ -1952,6 +2031,8 @@ pseudo_client_op(pseudo_op_t op, int access, int fd, int dirfd, const char *path
 				pseudo_util_debug_fd = pseudo_fd(fd, COPY_FD);
 			} else if (fd == pseudo_localstate_dir_fd) {
 				pseudo_localstate_dir_fd = pseudo_fd(fd, COPY_FD);
+			} else if (fd == pseudo_pathlock_fd) {
+				pseudo_pathlock_fd = pseudo_fd(fd, COPY_FD);
 			} else if (fd == pseudo_pwd_fd) {
 				pseudo_pwd_fd = pseudo_fd(fd, COPY_FD);
 				/* since we have a FILE * on it, we close that... */
