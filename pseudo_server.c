@@ -15,16 +15,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#ifdef PSEUDO_EPOLL
-#include <sys/epoll.h>
-#endif
 #include <signal.h>
 
 #include "pseudo.h"
@@ -32,6 +28,11 @@
 #include "pseudo_server.h"
 #include "pseudo_client.h"
 #include "pseudo_db.h"
+
+#if !PSEUDO_PORT_LINUX
+#error "pseudo: the server uses epoll(7), which is only implemented for Linux"
+#endif
+#include <sys/epoll.h>
 
 static int listen_fd = -1;
 
@@ -80,11 +81,7 @@ set_do_list_clients(int sig) {
 static int messages = 0, responses = 0;
 static struct timeval message_time = { .tv_sec = 0 };
 
-#ifdef PSEUDO_EPOLL
-static void pseudo_server_loop_epoll(void);
-#else
 static void pseudo_server_loop(void);
-#endif
 
 /* helper function to make a directory, just like mkdir -p.
  * Can't use system() because the child shell would end up trying
@@ -369,11 +366,7 @@ pseudo_server_start(int daemonize) {
 			kill(ppid, SIGUSR1);
 		}
 	}
-#ifdef PSEUDO_EPOLL
-	pseudo_server_loop_epoll();
-#else
 	pseudo_server_loop();
-#endif
 	return 0;
 }
 
@@ -589,8 +582,8 @@ serve_client(int i) {
 		}
 		free(response_path);
 	} else {
-		/* this should not be happening, but the exceptions aren't
-		 * being detected in select() for some reason.
+		/* this should not be happening, as the server loop
+		 * closes clients with nothing to read.
 		 */
 		pseudo_debug(PDBGF_SERVER, "client %d: no message\n", (int) clients[i].pid);
 		close_client(i);
@@ -612,9 +605,12 @@ serve_client(int i) {
 	return rc;
 }
 
-#ifdef PSEUDO_EPOLL
-static void pseudo_server_loop_epoll(void)
-{
+/* get clients, handle messages, shut down.
+ * This doesn't actually do any work, it just calls a ton of things which
+ * do work.
+ */
+static void
+pseudo_server_loop(void) {
 	struct sockaddr_un client;
 	socklen_t len;
 	int i;
@@ -803,204 +799,3 @@ static void pseudo_server_loop_epoll(void)
 	}
 
 }
-#else
-
-/* get clients, handle messages, shut down.
- * This doesn't actually do any work, it just calls a ton of things which
- * do work.
- */
-static void
-pseudo_server_loop(void) {
-	struct sockaddr_un client;
-	socklen_t len;
-	fd_set reads, writes, events;
-	int max_fd, current_clients;
-	struct timeval timeout;
-	int i;
-	int rc;
-	int fd;
-	int loop_timeout = pseudo_server_timeout;
-	struct sigaction eat_usr2 = {
-		.sa_handler = set_do_list_clients
-	};
-	int hitmaxfiles;
-
-	clients = malloc(16 * sizeof(*clients));
-	if (!clients) {
-		pseudo_error("out of memory allocating client table.\n");
-		exit(PSEUDO_EXIT_LISTEN_FD);
-	}
-
-	sigaction(SIGUSR2, &eat_usr2, NULL);
-
-	clients[0].fd = listen_fd;
-	clients[0].pid = getpid();
-
-	for (i = 1; i < 16; ++i) {
-		clients[i].fd = -1;
-		clients[i].pid = 0;
-		clients[i].tag = NULL;
-		clients[i].program = NULL;
-	}
-
-	active_clients = 1;
-	max_clients = 16;
-	highest_client = 0;
-	hitmaxfiles = 0;
-
-	pseudo_debug(PDBGF_SERVER, "server loop started.\n");
-	if (listen_fd < 0) {
-		pseudo_error("got into loop with no valid listen fd.\n");
-		exit(PSEUDO_EXIT_LISTEN_FD);
-	}
-	pdb_log_msg(SEVERITY_INFO, NULL, NULL, NULL, "server started (pid %d)", getpid());
-
-	FD_ZERO(&reads);
-	FD_ZERO(&events);
-	FD_ZERO(&writes);
-	FD_SET(clients[0].fd, &reads);
-	FD_SET(clients[0].fd, &events);
-	max_fd = clients[0].fd;
-	timeout = (struct timeval) { .tv_sec = LOOP_DELAY, .tv_usec = 0 };
-	
-	/* EINTR tends to come from profiling, so it is not a good reason to
-	 * exit; other signals are caught and set the flag causing a graceful
-	 * exit. */
-	sigset_t maskusr2;
-	sigemptyset(&maskusr2);
-	sigaddset(&maskusr2, SIGUSR2);
-	sigprocmask(SIG_BLOCK, &maskusr2, NULL);
-	while ((rc = select(max_fd + 1, &reads, &writes, &events, &timeout)) >= 0 || (errno == EINTR)) {
-		sigprocmask(SIG_UNBLOCK, &maskusr2, NULL);
-		if (rc == 0 || (rc == -1 && errno == EINTR)) {
-			/* If there's no clients, start timing out.  If there
-			 * are active clients, never time out.
-			 */
-			if (active_clients == 1) {
-				loop_timeout -= LOOP_DELAY;
-				/* maybe flush database to disk */
-				pdb_maybe_backup();
-				if (loop_timeout <= 0) {
-					pseudo_debug(PDBGF_SERVER, "no more clients, got bored.\n");
-					die_peacefully = 1;
-				} else {
-					/* display this if not exiting */
-					pseudo_debug(PDBGF_SERVER | PDBGF_BENCHMARK, "%d messages handled in %.4f seconds, %d responses\n",
-						messages,
-						(double) message_time.tv_sec +
-						(double) message_time.tv_usec / 1000000.0,
-						responses);
-				}
-			}
-		} else if (rc > 0) {
-			loop_timeout = pseudo_server_timeout;
-			for (i = 1; i <= highest_client; ++i) {
-				if (clients[i].fd == -1) {
-					continue;
-				} else if (FD_ISSET(clients[i].fd, &reads)) {
-					int n = 0;
-					ioctl(clients[i].fd, FIONREAD, &n);
-					if (n == 0) {
-						close_client(i);
-					} else {
-						serve_client(i);
-					}
-				} else if (hitmaxfiles) {
-					/* Only close one per loop iteration in the interests of caution */
-					close_client(i);
-					hitmaxfiles = 0;
-				}
-				if (die_forcefully)
-					break;
-			}
-			hitmaxfiles = 0;
-			if (!die_forcefully && 
-			    (FD_ISSET(clients[0].fd, &events) ||
-			     FD_ISSET(clients[0].fd, &reads))) {
-				len = sizeof(client);
-				if ((fd = accept(listen_fd, (struct sockaddr *) &client, &len)) != -1) {
-					/* Don't allow clients to end up on fd 2, because glibc's
-					 * malloc debug uses that fd unconditionally.
-					 */
-					if (fd == 2) {
-						int newfd = fcntl(fd, F_DUPFD, 3);
-						close(fd);
-						fd = newfd;
-					}
-					pseudo_debug(PDBGF_SERVER, "new client fd %d\n", fd);
-					open_client(fd);
-					/* A new client implicitly cancels any
-					 * previous shutdown request, or a
-					 * shutdown for lack of clients.
-					 */
-					pseudo_server_timeout = DEFAULT_PSEUDO_SERVER_TIMEOUT;
-					die_peacefully = 0;
-				} else if (errno == EMFILE) {
-					hitmaxfiles = 1;
-					pseudo_debug(PDBGF_SERVER, "Hit max open files, dropping a client.\n");
-				}
-			}
-			pseudo_debug(PDBGF_SERVER, "server loop complete [%d clients left]\n", active_clients);
-		}
-		if (do_list_clients) {
-			do_list_clients = 0;
-			pseudo_info("listing clients [1 through %d]:\n", highest_client);
-			for (i = 1; i <= highest_client; ++i) {
-				if (clients[i].fd == -1) {
-					pseudo_info("client %4d: inactive.\n", i);
-					continue;
-				}
-				pseudo_info("client %4d: fd %4d, pid %5d, state %s, program %s\n",
-					i, clients[i].fd, clients[i].pid,
-					FD_ISSET(clients[i].fd, &reads) ? "R" : "-",
-					clients[i].program ? clients[i].program : "<unspecified>");
-			}
-			pseudo_info("done.\n");
-		}
-		if (die_peacefully || die_forcefully) {
-			pseudo_debug(PDBGF_SERVER, "quitting.\n");
-			pseudo_debug(PDBGF_SERVER | PDBGF_BENCHMARK, "server %d exiting: handled %d messages in %.4f seconds\n",
-				getpid(), messages,
-				(double) message_time.tv_sec +
-				(double) message_time.tv_usec / 1000000.0);
-			pdb_log_msg(SEVERITY_INFO, NULL, NULL, NULL, "server %d exiting: handled %d messages in %.4f seconds",
-				getpid(), messages,
-				(double) message_time.tv_sec +
-				(double) message_time.tv_usec / 1000000.0);
-			/* and at this point, we'll start refusing connections */
-			close(clients[0].fd);
-			/* This is a good place to insert a delay for
-			 * debugging race conditions during startup. */
-			/* usleep(300000); */
-			exit(0);
-		}
-		FD_ZERO(&reads);
-		FD_ZERO(&writes);
-		FD_ZERO(&events);
-		FD_SET(clients[0].fd, &reads);
-		FD_SET(clients[0].fd, &events);
-		max_fd = clients[0].fd;
-		/* current_clients is a sanity check; note that for
-		 * purposes of select(), the server is one of the fds,
-		 * and thus, "a client".
-		 */
-		current_clients = 1;
-		for (i = 1; i <= highest_client; ++i) {
-			if (clients[i].fd != -1) {
-				++current_clients;
-				FD_SET(clients[i].fd, &reads);
-				if (clients[i].fd > max_fd)
-					max_fd = clients[i].fd;
-			}
-		}
-		if (current_clients != active_clients) {
-			pseudo_debug(PDBGF_SERVER, "miscount of current clients (%d) against active_clients (%d)?\n",
-				current_clients, active_clients);
-		}
-		/* reinitialize timeout because Linux select alters it */
-		timeout = (struct timeval) { .tv_sec = LOOP_DELAY, .tv_usec = 0 };
-		sigprocmask(SIG_BLOCK, &maskusr2, NULL);
-	}
-	pseudo_error("select failed: %s\n", strerror(errno));
-}
-#endif /* this is the else of #ifdef PSEUDO_EPOLL */
