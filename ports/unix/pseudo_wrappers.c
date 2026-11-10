@@ -30,12 +30,7 @@ popen(const char *command, const char *mode) {
 	save_errno = errno;
 	pseudo_droplock();
 	sigprocmask(SIG_SETMASK, &saved, NULL);
-#if 0
-/* This can cause hangs on some recentish systems which use locale
- * stuff for strerror...
- */
-	pseudo_debug(PDBGF_WRAPPER, "completed: popen (maybe: %s)\n", strerror(save_errno));
-#endif
+	/* not strerror(), which can hang on systems using locale data for it */
 	pseudo_debug(PDBGF_WRAPPER, "completed: popen (errno: %d)\n", save_errno);
 	errno = save_errno;
 	return rc;

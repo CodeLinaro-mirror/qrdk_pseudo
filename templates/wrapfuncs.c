@@ -78,12 +78,7 @@ quick_exit:
 	pseudo_droplock();
 	sigprocmask(SIG_SETMASK, &saved, NULL);
 	pseudo_debug(PDBGF_WRAPPER | PDBGF_VERBOSE, "${name} - yielded lock, restored signals\n");
-#if 0
-/* This can cause hangs on some recentish systems which use locale
- * stuff for strerror...
- */
-	pseudo_debug(PDBGF_WRAPPER, "wrapper completed: ${name} returns ${rc_format} (errno: %s)\n", ${rc_value}, strerror(save_errno));
-#endif
+	/* not strerror(), which can hang on systems using locale data for it */
 	pseudo_debug(PDBGF_WRAPPER, "wrapper completed: ${name} returns ${rc_format} (errno: %d)\n", ${rc_value}, save_errno);
 	errno = save_errno;
 	PROFILE_DONE;
