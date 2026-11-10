@@ -5,7 +5,7 @@
 
 case $(uname -s) in
 Linux)	echo "linux";;
-*)	echo >&2 "Unknown result from uname -s: %(uname -s). Aborting."
+*)	echo >&2 "Unknown result from uname -s: $(uname -s). Aborting."
 	exit 1
 	;;
 esac
