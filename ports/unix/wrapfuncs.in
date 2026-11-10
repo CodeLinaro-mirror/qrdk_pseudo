@@ -4,7 +4,7 @@ char *getwd(char *buf);
 int close(int fd);  /* noignore_path=1 */
 int fchmod(int fd, mode_t mode);
 int fchown(int fd, uid_t owner, gid_t group);
-int lchown(const char *path, uid_t owner, gid_t group); /* flags=AT_SYMLINK_NOFOLLOW */
+int lchown(const char *path, uid_t owner, gid_t group); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=shared */
 int dup2(int oldfd, int newfd); /* noignore_path=1 */
 int dup(int fd); /* noignore_path=1 */
 int chdir(const char *path); /* noignore_path=1 */
@@ -13,13 +13,13 @@ int access(const char *path, int mode);
 int faccessat(int dirfd, const char *path, int mode, int flags);
 int faccessat2(int dirfd, const char *path, int mode, int flags);
 FTS *fts_open(char * const *path_argv, int options, int (*compar)(const FTSENT **, const FTSENT **));
-FTSENT *fts_read(FTS *ftsp); /* noignore_path=1 */
-FTSENT *fts_children(FTS *ftsp, int options); /* noignore_path=1 */
+FTSENT *fts_read(FTS *ftsp); /* noignore_path=1, path_lock=shared */
+FTSENT *fts_children(FTS *ftsp, int options); /* noignore_path=1, path_lock=shared */
 int ftw(const char *path, int (*fn)(const char *, const struct stat *, int), int nopenfd);
 int nftw(const char *path, int (*fn)(const char *, const struct stat *, int, struct FTW *), int nopenfd, int flag);
 int glob(const char *pattern, int flags, int (*errfunc)(const char *, int), glob_t *pglob);
 int lutimes(const char *path, const struct timeval *tv); /* flags=AT_SYMLINK_NOFOLLOW */
-char *mkdtemp(char *template);
+char *mkdtemp(char *template); /* path_lock=1 */
 char *mktemp(char *template);
 long pathconf(const char *path, int name);
 char *realpath(const char *name, char *resolved_name); /* version="GLIBC_2.3" */
@@ -37,27 +37,27 @@ int fclose(FILE *fp);  /* noignore_path=1 */
 FILE *freopen(const char *path, const char *mode, FILE *stream); /* noignore_path=1 */
 int chroot(const char *path); /* noignore_path=1 */
 int acct(const char *path);
-int chmod(const char *path, mode_t mode);
-int chown(const char *path, uid_t owner, gid_t group);
-int fchmodat(int dirfd, const char *path, mode_t mode, int flags);
-int fchownat(int dirfd, const char *path, uid_t owner, gid_t group, int flags);
-int link(const char *oldname, const char *newname); /* flags=AT_SYMLINK_NOFOLLOW */
-int linkat(int olddirfd, const char *oldname, int newdirfd, const char *newname, int flags);
-int mkdir(const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW */
-int mkdirat(int dirfd, const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW */
-int mkfifo(const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW */
-int mkfifoat(int dirfd, const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW */
-int mknod(const char *path, mode_t mode, dev_t dev); /* flags=AT_SYMLINK_NOFOLLOW */
-int mknodat(int dirfd, const char *path, mode_t mode, dev_t dev); /* flags=AT_SYMLINK_NOFOLLOW */
-int mkstemp(char *template); /* flags=AT_SYMLINK_NOFOLLOW */
-int mkostemp(char *template, int oflags); /* flags=AT_SYMLINK_NOFOLLOW */
-int mkstemps(char *template, int suffixlen); /* flags=AT_SYMLINK_NOFOLLOW */
-int mkostemps(char *template, int suffixlen, int oflags); /* flags=AT_SYMLINK_NOFOLLOW */
+int chmod(const char *path, mode_t mode); /* path_lock=shared */
+int chown(const char *path, uid_t owner, gid_t group); /* path_lock=shared */
+int fchmodat(int dirfd, const char *path, mode_t mode, int flags); /* path_lock=shared */
+int fchownat(int dirfd, const char *path, uid_t owner, gid_t group, int flags); /* path_lock=shared */
+int link(const char *oldname, const char *newname); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int linkat(int olddirfd, const char *oldname, int newdirfd, const char *newname, int flags); /* path_lock=1 */
+int mkdir(const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mkdirat(int dirfd, const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mkfifo(const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mkfifoat(int dirfd, const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mknod(const char *path, mode_t mode, dev_t dev); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mknodat(int dirfd, const char *path, mode_t mode, dev_t dev); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mkstemp(char *template); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mkostemp(char *template, int oflags); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mkstemps(char *template, int suffixlen); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int mkostemps(char *template, int suffixlen, int oflags); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int rename(const char *oldpath, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int renameat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int rmdir(const char *path); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
-int symlink(const char *oldname, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW */
-int symlinkat(const char *oldname, int dirfd, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW */
+int symlink(const char *oldname, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int symlinkat(const char *oldname, int dirfd, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int unlink(const char *path); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int unlinkat(int dirfd, const char *path, int rflags); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 # primarily for use with chroot()
@@ -74,4 +74,4 @@ void sync(void); /* async_skip= */
 int sync_file_range(int fd, off64_t offset, off64_t nbytes, unsigned int flags); /* async_skip=0 */
 int msync(void *addr, size_t length, int flags); /* async_skip=0 */
 mode_t umask(mode_t mask);
-int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen); /* path_lock=1 */
