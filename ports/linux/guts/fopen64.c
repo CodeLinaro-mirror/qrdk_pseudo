@@ -8,10 +8,10 @@
  * wrap_fopen64(const char *path, const char *mode) {
  *	FILE * rc = 0;
  */
- 	struct stat64 buf;
+	PSEUDO_STATBUF buf;
 	int save_errno;
 
-	int existed = (real___xstat64(_STAT_VER, path, &buf) != -1);
+	int existed = (base_stat(path, &buf) != -1);
 
 	rc = real_fopen64(path, mode);
 	save_errno = errno;
@@ -20,7 +20,7 @@
 		int fd = fileno(rc);
 
 		pseudo_debug(PDBGF_FILE, "fopen64 '%s': fd %d <FILE %p>\n", path, fd, (void *) rc);
-		if (real___fxstat64(_STAT_VER, fd, &buf) != -1) {
+		if (base_fstat(fd, &buf) != -1) {
 			if (!existed) {
 				int path_lock_fd = pseudo_client_path_lock(0);
 				real_fchmod(fd, PSEUDO_FS_MODE(0666 & ~pseudo_umask, 0));

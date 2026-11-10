@@ -8,7 +8,7 @@
  * wrap_mkstemp64(char *template, int oflags) {
  *	int rc = -1;
  */
-	struct stat64 buf;
+	PSEUDO_STATBUF buf;
  	int save_errno;
 	size_t len;
 	char *tmp_template;
@@ -35,7 +35,7 @@
 	if (rc != -1) {
 		save_errno = errno;
 
-		if (real___fxstat64(_STAT_VER, rc, &buf) != -1) {
+		if (base_fstat(rc, &buf) != -1) {
 			real_fchmod(rc, PSEUDO_FS_MODE(0600, 0));
 			pseudo_client_op(OP_CREAT, 0, -1, -1, tmp_template, &buf);
 			pseudo_client_op(OP_OPEN, PSA_READ | PSA_WRITE, rc, -1, tmp_template, &buf);

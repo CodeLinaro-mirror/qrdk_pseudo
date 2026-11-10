@@ -10,16 +10,9 @@ extern pseudo_msg_t *pseudo_client_op(pseudo_op_t op, int access, int fd, int di
 extern int pseudo_client_ignore_path(const char *path);
 extern int pseudo_client_ignore_fd(int fd);
 extern void pseudo_client_linked_paths(const char *oldpath, const char *newpath);
-#if PSEUDO_STATBUF_64
-#define base_lstat real_lstat64
-#define base_fstat real_fstat64
-#define base_stat real_stat64
-#define base_fstatat(dirfd, path, buf, flags) real___fxstatat64(_STAT_VER, dirfd, path, buf, flags)
-#else
-#define base_lstat real_lstat
-#define base_fstat real_fstat
-#define base_stat real_stat
-#define base_fstatat(dirfd, path, buf, flags) real___fxstatat(_STAT_VER, dirfd, path, buf, flags)
+/* The port defines how pseudo stats files itself, on PSEUDO_STATBUF */
+#if !defined(base_lstat) || !defined(base_fstat) || !defined(base_stat) || !defined(base_fstatat)
+#error "pseudo: the port must define base_lstat, base_fstat, base_stat and base_fstatat"
 #endif
 extern void pseudo_antimagic(void);
 extern void pseudo_magic(void);

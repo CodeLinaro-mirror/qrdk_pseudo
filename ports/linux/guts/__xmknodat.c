@@ -9,7 +9,7 @@
  *	int rc = -1;
  */
  	pseudo_msg_t *msg;
-	struct stat64 buf;
+	PSEUDO_STATBUF buf;
 
 	/* mask out mode bits appropriately */
 	mode = mode & ~pseudo_umask;
@@ -23,7 +23,7 @@
 	/* we don't use underlying call, so _ver is irrelevant to us */
 	(void) ver;
 
-	rc = real___fxstatat64(_STAT_VER, dirfd, path, &buf, AT_SYMLINK_NOFOLLOW);
+	rc = base_fstatat(dirfd, path, &buf, AT_SYMLINK_NOFOLLOW);
 	if (rc != -1) {
 		/* if we can stat the file, you can't mknod it */
 		errno = EEXIST;
@@ -39,7 +39,7 @@
 		return -1;
 	}
 	real_fchmod(rc, PSEUDO_FS_MODE(mode, 0));
-	real___fxstat64(_STAT_VER, rc, &buf);
+	base_fstat(rc, &buf);
 	/* mknod does not really open the file.  We don't have
 	 * to use wrap_close because we've never exposed this file
 	 * descriptor to the client code.

@@ -8,9 +8,9 @@
  * wrap_freopen64(const char *path, const char *mode, FILE *stream) {
  *	FILE * rc = NULL;
  */
- 	struct stat64 buf;
+	PSEUDO_STATBUF buf;
 	int save_errno;
-	int existed = (real___xstat64(_STAT_VER, path, &buf) != -1);
+	int existed = (base_stat(path, &buf) != -1);
 
 	rc = real_freopen64(path, mode, stream);
 	save_errno = errno;
@@ -19,7 +19,7 @@
 		int fd = fileno(rc);
 
 		pseudo_debug(PDBGF_FILE, "freopen64 '%s': fd %d\n", path, fd);
-		if (real___fxstat64(_STAT_VER, fd, &buf) != -1) {
+		if (base_fstat(fd, &buf) != -1) {
 			if (!existed) {
 				int path_lock_fd = pseudo_client_path_lock(0);
 				real_fchmod(fd, PSEUDO_FS_MODE(0666 & ~pseudo_umask, 0));

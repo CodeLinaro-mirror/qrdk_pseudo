@@ -8,7 +8,7 @@
  * int openat2(int dirfd, const char *path, const struct open_how *how, size_t size)
  *	int rc = -1;
  */
-	struct stat64 buf;
+	PSEUDO_STATBUF buf;
 	int overly_magic_nonblocking = 0;
 	int existed = 1;
 	int save_errno;
@@ -81,7 +81,7 @@
 	/* note "else" in #ifdef O_TMPFILE above */
 	if (my_how.flags & O_CREAT) {
 		save_errno = errno;
-		rc = real___fxstatat64(_STAT_VER, dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
+		rc = base_fstatat(dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
 		existed = (rc != -1);
 		if (!existed)
 			pseudo_debug(PDBGF_FILE, "openat2_creat: %s -> 0%lld\n", pseudo_path, my_how.mode);
@@ -94,7 +94,7 @@
 	 */
 	if (!(my_how.flags & O_NONBLOCK) && ((my_how.flags & (O_WRONLY | O_RDONLY | O_RDWR)) != O_RDWR)) {
 		save_errno = errno;
-		rc = real___fxstatat64(_STAT_VER, dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
+		rc = base_fstatat(dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
 		if (rc != -1 && S_ISFIFO(buf.st_mode)) {
 			overly_magic_nonblocking = 1;
 		}
@@ -151,7 +151,7 @@
 			return rc;
 		}
 #endif
-		stat_rc = real___fxstatat64(_STAT_VER, dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
+		stat_rc = base_fstatat(dirfd, pseudo_path, &buf, (my_how.flags & O_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
 
 		pseudo_debug(PDBGF_FILE, "openat2(path %s), flags %lld, stat rc %d, stat mode %o\n",
 			pseudo_path, my_how.flags, stat_rc, buf.st_mode);
@@ -162,7 +162,7 @@
 				real_fchmod(rc, PSEUDO_FS_MODE(my_how.mode, 0));
 				// file has no path, but has been created
 				if (pseudo_client_path_matches_fd(pseudo_path, rc, my_how.flags & O_NOFOLLOW) &&
-				    real___fxstat64(_STAT_VER, rc, &buf) != -1) {
+				    base_fstat(rc, &buf) != -1) {
 					buf.st_mode = PSEUDO_DB_MODE(buf.st_mode, my_how.mode);
 					pseudo_client_op(OP_CREAT, 0, -1, dirfd, pseudo_path, &buf);
 				}

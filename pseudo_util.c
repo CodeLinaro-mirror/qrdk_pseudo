@@ -1776,7 +1776,7 @@ pseudo_evlog_logfile(char *defname, int prefer_fd) {
 }
 
 void
-pseudo_stat32_from64(struct stat *buf32, const struct stat64 *buf) {
+pseudo_stat32_from64(struct stat *buf32, const PSEUDO_STATBUF *buf) {
 	buf32->st_dev = buf->st_dev;
 	buf32->st_ino = buf->st_ino;
 	buf32->st_mode = buf->st_mode;
@@ -1793,7 +1793,7 @@ pseudo_stat32_from64(struct stat *buf32, const struct stat64 *buf) {
 }
 
 void
-pseudo_stat64_from32(struct stat64 *buf64, const struct stat *buf) {
+pseudo_stat64_from32(PSEUDO_STATBUF *buf64, const struct stat *buf) {
 	buf64->st_dev = buf->st_dev;
 	buf64->st_ino = buf->st_ino;
 	buf64->st_mode = buf->st_mode;

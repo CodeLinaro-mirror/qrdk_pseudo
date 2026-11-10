@@ -4,8 +4,16 @@
  */
 #define PRELINK_LIBRARIES "LD_PRELOAD"
 #define PRELINK_PATH "LD_LIBRARY_PATH"
-#define PSEUDO_STATBUF_64 1
 #define PSEUDO_STATBUF struct stat64
+/* How pseudo stats files itself, bypassing its own wrappers.  glibc's
+ * stat64() and friends were inline wrappers around __xstat64() and
+ * friends before glibc 2.33, and pseudo still uses those to work with
+ * binaries built against older glibc.
+ */
+#define base_lstat real_lstat64
+#define base_fstat real_fstat64
+#define base_stat real_stat64
+#define base_fstatat(dirfd, path, buf, flags) real___fxstatat64(_STAT_VER, dirfd, path, buf, flags)
 #define PSEUDO_LINKPATH_SEPARATOR " "
 /* Linux NEVER follows symlinks for link(2)... except on old kernels
  * I don't care about.

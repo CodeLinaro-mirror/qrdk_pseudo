@@ -218,7 +218,7 @@ typedef struct {
 static pseudo_msg_t xattrdb_data;
 
 pseudo_msg_t *
-pseudo_xattrdb_save(int fd, const char *path, const struct stat64 *buf) {
+pseudo_xattrdb_save(int fd, const char *path, const PSEUDO_STATBUF *buf) {
 	int rc = -1;
 	if (!path && fd < 0)
 		return NULL;
@@ -249,7 +249,7 @@ pseudo_xattrdb_save(int fd, const char *path, const struct stat64 *buf) {
 }
 
 pseudo_msg_t *
-pseudo_xattrdb_load(int fd, const char *path, const struct stat64 *buf) {
+pseudo_xattrdb_load(int fd, const char *path, const PSEUDO_STATBUF *buf) {
 	int rc = -1, retryrc = -1;
 	if (!path && fd < 0)
 		return NULL;
@@ -1845,7 +1845,7 @@ pseudo_client_op(pseudo_op_t op, int access, int fd, int dirfd, const char *path
 
 #ifdef PSEUDO_XATTRDB
 	if (buf) {
-		struct stat64 bufcopy = *buf;
+		PSEUDO_STATBUF bufcopy = *buf;
 		int do_save = 0;
 		/* maybe use xattr instead */
 		/* note: if we use xattr, logging won't work reliably

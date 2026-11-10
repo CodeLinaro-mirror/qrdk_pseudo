@@ -8,7 +8,7 @@
  *	int rc = -1;
  */
 
-	struct stat64 buf;
+	PSEUDO_STATBUF buf;
 	int save_errno;
 	char *pseudo_path;
 
@@ -46,7 +46,7 @@
 		save_errno = errno;
 		int stat_rc;
 
-		stat_rc = real___fxstatat64(_STAT_VER, dirfd, pseudo_path, &buf, (flags & AT_SYMLINK_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
+		stat_rc = base_fstatat(dirfd, pseudo_path, &buf, (flags & AT_SYMLINK_NOFOLLOW) ? AT_SYMLINK_NOFOLLOW : 0);
 
 		pseudo_debug(PDBGF_FILE, "open_tree(path %s), flags %o, stat rc %d, stat mode %o\n",
 			pseudo_path, flags, stat_rc, buf.st_mode);
