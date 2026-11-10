@@ -441,7 +441,7 @@ close_client(int client) {
 	clients[client].program = NULL;
 	--active_clients;
 	if (client == highest_client)
-		while (clients[highest_client].fd != -1 && highest_client > 0)
+		while (clients[highest_client].fd == -1 && highest_client > 0)
 			--highest_client;
 }
 
