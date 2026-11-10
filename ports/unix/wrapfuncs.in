@@ -53,13 +53,13 @@ int mkstemp(char *template); /* flags=AT_SYMLINK_NOFOLLOW */
 int mkostemp(char *template, int oflags); /* flags=AT_SYMLINK_NOFOLLOW */
 int mkstemps(char *template, int suffixlen); /* flags=AT_SYMLINK_NOFOLLOW */
 int mkostemps(char *template, int suffixlen, int oflags); /* flags=AT_SYMLINK_NOFOLLOW */
-int rename(const char *oldpath, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW */
-int renameat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW */
-int rmdir(const char *path); /* flags=AT_SYMLINK_NOFOLLOW */
+int rename(const char *oldpath, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int renameat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int rmdir(const char *path); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int symlink(const char *oldname, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW */
 int symlinkat(const char *oldname, int dirfd, const char *newpath); /* flags=AT_SYMLINK_NOFOLLOW */
-int unlink(const char *path); /* flags=AT_SYMLINK_NOFOLLOW */
-int unlinkat(int dirfd, const char *path, int rflags); /* flags=AT_SYMLINK_NOFOLLOW */
+int unlink(const char *path); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
+int unlinkat(int dirfd, const char *path, int rflags); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 # primarily for use with chroot()
 ssize_t readlink(const char *path, char *buf, size_t bufsiz); /* flags=AT_SYMLINK_NOFOLLOW */
 ssize_t readlinkat(int dirfd, const char *path, char *buf, size_t bufsiz); /* flags=AT_SYMLINK_NOFOLLOW */

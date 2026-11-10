@@ -248,6 +248,11 @@ class Function:
         self.noignore_path = False
         self.hand_wrapped = None
         self.async_skip = None
+        # Hold the client path lock (pseudo_client_path_lock()) around
+        # the guts: path_lock=1 (exclusive) for operations that check,
+        # change and then record a path in separate steps, and
+        # path_lock=shared for operations that only look at a path.
+        self.path_lock = None
         # used for the copyright date when creating stub functions
         self.date = datetime.date.today().year
         # Used to define pointers that should EFAULT if null
@@ -491,6 +496,18 @@ class Function:
             return "(void)"
         else:
             return "rc ="
+
+    def path_lock_begin(self):
+        """take the client path lock, for path_lock=1 functions"""
+        if self.path_lock:
+            return "int path_lock_fd = pseudo_client_path_lock(%d);\n\t\t\t" % (self.path_lock == "shared")
+        return ""
+
+    def path_lock_end(self):
+        """release the client path lock, for path_lock=1 functions"""
+        if self.path_lock:
+            return "\n\t\t\tpseudo_client_path_unlock(path_lock_fd);"
+        return ""
 
     def def_return(self):
         """return default value (or just return)"""
