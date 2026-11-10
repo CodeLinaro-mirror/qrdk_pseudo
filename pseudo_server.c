@@ -728,7 +728,9 @@ static void pseudo_server_loop_epoll(void)
 							pseudo_debug(PDBGF_SERVER, "Hit max open files.\n");
 						}
 					}
-				} else {
+				} else if (clients[client_id].fd != -1) {
+					/* the client may have been closed earlier in
+					 * this batch of events */
 					int n = 0;
 					ioctl(clients[client_id].fd, FIONREAD, &n);
 					if (n == 0) {
