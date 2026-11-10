@@ -1399,11 +1399,6 @@ pseudo_client_request(pseudo_msg_t *msg, size_t len, const char *path) {
 	pseudo_msg_t *response = 0;
 	int tries = 0;
 	int rc;
-	#if 0
-	extern char *program_invocation_short_name;
-	if (!strcmp(program_invocation_short_name, "pseudo"))
-		abort();
-	#endif
 
 	if (!msg)
 		return 0;

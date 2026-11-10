@@ -106,22 +106,6 @@ int (*pseudo_real_unsetenv)(const char *) = unsetenv;
 char * (*pseudo_real_getenv)(const char *) = getenv;
 int (*pseudo_real_setenv)(const char *, const char *, int) = setenv;
 
-#if 0
-static void
-dump_env(char **envp) {
-	size_t i = 0;
-	for (i = 0; envp[i]; i++) {
-		pseudo_debug(PDBGF_ENV, "dump_envp: [%d]%s\n", (int) i, envp[i]);
-	}
-
-	for (i = 0; pseudo_env[i].key; i++) {
-		pseudo_debug(PDBGF_ENV, "dump_envp: {%d}%s=%s\n", (int) i, pseudo_env[i].key, pseudo_env[i].value);
-	}
-
-	pseudo_debug(PDBGF_ENV, "dump_envp: _in_init %d\n", pseudo_util_initted);
-}
-#endif
-
 int
 pseudo_has_unload(char * const *envp) {
 	static const char unload[] = "PSEUDO_UNLOAD";
