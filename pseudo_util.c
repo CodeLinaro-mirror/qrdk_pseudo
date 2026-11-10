@@ -96,6 +96,8 @@ static unsigned long pseudo_severity_flags_in(char *);
  * best to handle that case.
  */
 static int pseudo_util_initted = -1;  /* Not yet run */
+/* number of debug flags turned on by pseudo_debug_verbose() */
+static int max_debug_level = 0;
 
 /* bypass wrapper logic on path computations */
 int (*pseudo_real_lstat)(const char *path, PSEUDO_STATBUF *buf) = NULL;
@@ -217,6 +219,10 @@ pseudo_init_util(void) {
 		int i;
 		int level = pseudo_atoi_wrapper(env);
 		if (level > 0) {
+			/* a level selects the first <level> flags, even if
+			 * this runs more than once in a process */
+			pseudo_util_debug_flags = 0;
+			max_debug_level = 0;
 			for (i = 0; i < level; ++i) {
 				pseudo_debug_verbose();
 			}
@@ -379,9 +385,6 @@ with_libpseudo(char *list) {
 
 char *pseudo_version = PSEUDO_VERSION;
 
-/* going away soon */
-static int max_debug_level = 0;
-
 void
 pseudo_debug_terse(void) {
 	char s[2] = { pseudo_debug_type_symbolic(max_debug_level) };
@@ -397,7 +400,8 @@ pseudo_debug_verbose(void) {
 	char s[2] = { pseudo_debug_type_symbolic(max_debug_level + 1) };
 
 	if (s[0]) {
-		pseudo_debug_set(s);
+		/* add to the flags already set, unlike pseudo_debug_set() */
+		pseudo_util_debug_flags |= pseudo_debug_flags_in(s);
 		++max_debug_level;
 	}
 }
