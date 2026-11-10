@@ -47,7 +47,7 @@ static int pseudo_db_check(int fix);
 void
 usage(int status) {
 	FILE *f = status ? stderr : stdout;
-	fputs("Usage: pseudo [-dflv] [-x flags] [-P prefix] [-rR root] [-t timeout] [command]\n", f);
+	fputs("Usage: pseudo [-dflv] [-x flags] [-k severities] [-P prefix] [-rR root] [-t timeout] [command]\n", f);
 	fputs("       pseudo -h\n", f);
 	fputs("       pseudo [-dflv] [-x flags] [-P prefix] [-BC] -i path\n", f);
 	fputs("       pseudo [-dflv] [-x flags] [-P prefix] [-BC] -m from -M to\n", f);
@@ -134,7 +134,7 @@ main(int argc, char *argv[]) {
 	 * wrong.  The + suppresses this annoying behavior, but may not
 	 * be compatible with sane option libraries.
 	 */
-	while ((o = getopt(argc, argv, "+BCdfhi:klm:M:p:P:r:R:St:vVx:")) != -1) {
+	while ((o = getopt(argc, argv, "+BCdfhi:k:lm:M:p:P:r:R:St:vVx:")) != -1) {
 		switch (o) {
 		case 'B': /* rebuild database */
 			opt_B = 1;
@@ -245,6 +245,7 @@ main(int argc, char *argv[]) {
 		}
 	}
 	pseudo_debug_flags_finalize();
+	pseudo_severity_flags_finalize();
 	/* Options are processed, preserve them... */
 	pseudo_set_value("PSEUDO_OPTS", opts);
 
