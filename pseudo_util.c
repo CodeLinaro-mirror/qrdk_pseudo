@@ -1123,9 +1123,6 @@ pseudo_setupenv() {
 		}
 	}
 
-	/* we kept libdir path until now because with_libpseudo might
-	 * need it
-	 */
 	free(libdir_path);
 }
 
