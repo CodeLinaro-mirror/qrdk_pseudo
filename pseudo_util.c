@@ -443,7 +443,18 @@ pseudo_evlog_flags_finalize(void) {
 
 void
 pseudo_severity_flags_finalize(void) {
-	pseudo_flags_finalize(pseudo_util_severity_flags, "PSEUDO_SEVERITY");
+	/* PSEUDO_SEVERITY holds severity names, not debug type letters */
+	char buf[128] = "";
+	size_t len = 0;
+
+	for (int i = SEVERITY_NONE + 1; i < SEVERITY_MAX; ++i) {
+		if (pseudo_util_severity_flags & (1UL << i)) {
+			snprintf(buf + len, sizeof(buf) - len, "%s%s",
+				len ? "," : "", pseudo_sev_name(i));
+			len = strlen(buf);
+		}
+	}
+	pseudo_set_value("PSEUDO_SEVERITY", buf);
 }
 
 static unsigned long
