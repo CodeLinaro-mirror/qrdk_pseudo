@@ -4,7 +4,6 @@ char *getwd(char *buf);
 int close(int fd);  /* noignore_path=1 */
 int fchmod(int fd, mode_t mode);
 int fchown(int fd, uid_t owner, gid_t group);
-int lchown(const char *path, uid_t owner, gid_t group); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=shared */
 int dup2(int oldfd, int newfd); /* noignore_path=1 */
 int dup(int fd); /* noignore_path=1 */
 int chdir(const char *path); /* noignore_path=1 */
@@ -18,7 +17,6 @@ FTSENT *fts_children(FTS *ftsp, int options); /* noignore_path=1, path_lock=shar
 int ftw(const char *path, int (*fn)(const char *, const struct stat *, int), int nopenfd);
 int nftw(const char *path, int (*fn)(const char *, const struct stat *, int, struct FTW *), int nopenfd, int flag);
 int glob(const char *pattern, int flags, int (*errfunc)(const char *, int), glob_t *pglob);
-int lutimes(const char *path, const struct timeval *tv); /* flags=AT_SYMLINK_NOFOLLOW */
 char *mkdtemp(char *template); /* path_lock=1 */
 char *mktemp(char *template);
 long pathconf(const char *path, int name);
@@ -27,10 +25,8 @@ int remove(const char *path); /* flags=AT_SYMLINK_NOFOLLOW */
 DIR *opendir(const char *path); /* noignore_path=1 */
 int closedir(DIR *dirp); /* noignore_path=1 */
 char *tempnam(const char *template, const char *pfx);
-char *tmpnam(char *s);
 int truncate(const char *path, off_t length);
 int utime(const char *path, const struct utimbuf *buf);
-int utimes(const char *path, const struct timeval *times);
 # needed because libc stdio does horrible things with inline asm syscalls
 FILE *fopen(const char *path, const char *mode); /* noignore_path=1 */
 int fclose(FILE *fp);  /* noignore_path=1 */
@@ -47,8 +43,6 @@ int mkdir(const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW, path_loc
 int mkdirat(int dirfd, const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int mkfifo(const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int mkfifoat(int dirfd, const char *path, mode_t mode); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
-int mknod(const char *path, mode_t mode, dev_t dev); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
-int mknodat(int dirfd, const char *path, mode_t mode, dev_t dev); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int mkstemp(char *template); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int mkostemp(char *template, int oflags); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
 int mkstemps(char *template, int suffixlen); /* flags=AT_SYMLINK_NOFOLLOW, path_lock=1 */
