@@ -560,8 +560,8 @@ pseudo_evlog_dump(void) {
 	}
 	localtime_r(&first, &first_tm);
 	localtime_r(&last, &last_tm);
-	strftime(firstdate, 64, "%Y-%M-%D %H:%M:%S", &first_tm);
-	strftime(lastdate, 64, "%Y-%M-%D %H:%M:%S", &last_tm);
+	strftime(firstdate, 64, "%Y-%m-%d %H:%M:%S", &first_tm);
+	strftime(lastdate, 64, "%Y-%m-%d %H:%M:%S", &last_tm);
 
 	len = snprintf(scratch, 256, "event log for pid %d [%d entries]\n",
 		getpid(), entries);
