@@ -47,7 +47,7 @@ static int pseudo_db_check(int fix);
 void
 usage(int status) {
 	FILE *f = status ? stderr : stdout;
-	fputs("Usage: pseudo [-dflv] [-x flags] [-k severities] [-P prefix] [-rR root] [-t timeout] [command]\n", f);
+	fputs("Usage: pseudo [-dflv] [-x flags] [-k severities] [-p path] [-P prefix] [-rR root] [-t timeout] [command]\n", f);
 	fputs("       pseudo -h\n", f);
 	fputs("       pseudo [-dflv] [-x flags] [-P prefix] [-BC] -i path\n", f);
 	fputs("       pseudo [-dflv] [-x flags] [-P prefix] [-BC] -m from -M to\n", f);
