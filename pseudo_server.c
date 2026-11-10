@@ -407,7 +407,7 @@ open_client(int fd) {
 		clients[max_clients].pid = 0;
 		clients[max_clients].tag = NULL;
 		clients[max_clients].program = NULL;
-		highest_client = max_clients + 1;
+		highest_client = max_clients;
 
 		max_clients += 16;
 		++active_clients;
