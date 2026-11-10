@@ -626,6 +626,7 @@ static void pseudo_server_loop_epoll(void)
 	struct sigaction eat_usr2 = {
 		.sa_handler = set_do_list_clients
 	};
+	int hitmaxfiles = 0;
 
 	clients = malloc(16 * sizeof(*clients));
 	if (!clients) {
@@ -724,8 +725,8 @@ static void pseudo_server_loop_epoll(void)
 								exit(PSEUDO_EXIT_EPOLL_CTL);
 							}
 						} else if (errno == EMFILE) {
-							// select() loop would drop a client here, we do nothing (for now)
-							pseudo_debug(PDBGF_SERVER, "Hit max open files.\n");
+							hitmaxfiles = 1;
+							pseudo_debug(PDBGF_SERVER, "Hit max open files, dropping a client.\n");
 						}
 					}
 				} else if (clients[client_id].fd != -1) {
@@ -741,6 +742,27 @@ static void pseudo_server_loop_epoll(void)
 				}
 				if (die_forcefully)
 					break;
+			}
+			/* The listening socket stays readable while accept()
+			 * fails, so make room by dropping one client that had
+			 * no event in this batch, and so can't have one pending
+			 * in it either.
+			 */
+			if (hitmaxfiles && !die_forcefully) {
+				hitmaxfiles = 0;
+				for (i = 1; i <= highest_client; ++i) {
+					int j;
+					if (clients[i].fd == -1)
+						continue;
+					for (j = 0; j < rc; ++j) {
+						if ((int) events[j].data.u64 == i)
+							break;
+					}
+					if (j == rc) {
+						close_client(i);
+						break;
+					}
+				}
 			}
 			pseudo_debug(PDBGF_SERVER, "server loop complete [%d clients left]\n", active_clients);
 		} else {
