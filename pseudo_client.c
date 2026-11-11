@@ -1253,8 +1253,31 @@ pseudo_client_path_matches_fd(const char *path, int fd, int nofollow) {
 static int
 client_connect(void) {
 	/* we have a server pid, is it responsive? */
-	struct sockaddr_un sun = { .sun_family = AF_UNIX, .sun_path = PSEUDO_SOCKET };
-	int cwd_fd;
+	struct sockaddr_un sun = { .sun_family = AF_UNIX };
+	struct stat st;
+	int cwd_fd = -1;
+	int use_chdir;
+	int len;
+
+	/* The full socket path can be too long for sun_path, so name the
+	 * state directory by its descriptor under /proc/self/fd.  Unlike
+	 * changing directory, that needs no open("."), which a Landlock
+	 * sandbox can deny, and doesn't move other threads' working
+	 * directory.  Without /proc, or if that path doesn't fit, change
+	 * directory as before.
+	 */
+	len = snprintf(sun.sun_path, sizeof(sun.sun_path), "/proc/self/fd/%d",
+		pseudo_localstate_dir_fd);
+	if (len > 0 && (size_t) len + 1 + strlen(PSEUDO_SOCKET) < sizeof(sun.sun_path) &&
+	    stat(sun.sun_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+		snprintf(sun.sun_path + len, sizeof(sun.sun_path) - len, "/%s",
+			PSEUDO_SOCKET);
+		use_chdir = 0;
+	} else {
+		pseudo_debug(PDBGF_CLIENT, "/proc/self/fd unusable or path too long, changing directory to connect.\n");
+		snprintf(sun.sun_path, sizeof(sun.sun_path), "%s", PSEUDO_SOCKET);
+		use_chdir = 1;
+	}
 
 	connect_fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	connect_fd = pseudo_fd(connect_fd, MOVE_FD);
@@ -1267,40 +1290,46 @@ client_connect(void) {
 	}
 
 	pseudo_debug(PDBGF_CLIENT, "connecting socket...\n");
-	cwd_fd = open(".", O_RDONLY);
-	if (cwd_fd == -1) {
-		pseudo_error("Couldn't stash directory before opening socket: %s",
-			strerror(errno));
-		close(connect_fd);
-		connect_fd = -1;
-		return 1;
-	}
-	if (fchdir(pseudo_localstate_dir_fd) == -1) {
-		pseudo_error("Couldn't chdir to server directory [%d]: %s\n",
-			pseudo_localstate_dir_fd, strerror(errno));
-		close(connect_fd);
-		close(cwd_fd);
-		connect_fd = -1;
-		return 1;
+	if (use_chdir) {
+		cwd_fd = open(".", O_RDONLY);
+		if (cwd_fd == -1) {
+			pseudo_error("Couldn't stash directory before opening socket: %s\n",
+				strerror(errno));
+			close(connect_fd);
+			connect_fd = -1;
+			return 1;
+		}
+		if (fchdir(pseudo_localstate_dir_fd) == -1) {
+			pseudo_error("Couldn't chdir to server directory [%d]: %s\n",
+				pseudo_localstate_dir_fd, strerror(errno));
+			close(connect_fd);
+			close(cwd_fd);
+			connect_fd = -1;
+			return 1;
+		}
 	}
 	if (connect(connect_fd, (struct sockaddr *) &sun, sizeof(sun)) == -1) {
 		char *e = strerror(errno);
 		pseudo_debug(PDBGF_CLIENT, "Can't connect socket to pseudo.socket: (%s)\n", e);
 		pseudo_evlog(PDBGF_CLIENT, "connect failed: %s\n", e);
 		close(connect_fd);
+		if (use_chdir) {
+			if (fchdir(cwd_fd) == -1) {
+				pseudo_error("return to previous directory failed: %s\n",
+					strerror(errno));
+			}
+			close(cwd_fd);
+		}
+		connect_fd = -1;
+		return 1;
+	}
+	if (use_chdir) {
 		if (fchdir(cwd_fd) == -1) {
 			pseudo_error("return to previous directory failed: %s\n",
 				strerror(errno));
 		}
 		close(cwd_fd);
-		connect_fd = -1;
-		return 1;
 	}
-	if (fchdir(cwd_fd) == -1) {
-		pseudo_error("return to previous directory failed: %s\n",
-			strerror(errno));
-	}
-	close(cwd_fd);
 	pseudo_evlog(PDBGF_CLIENT, "socket connect OK.\n");
 	pseudo_debug(PDBGF_CLIENT | PDBGF_VERBOSE, "connected socket.\n");
 	return 0;
