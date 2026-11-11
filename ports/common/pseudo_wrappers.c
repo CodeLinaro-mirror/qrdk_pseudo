@@ -331,6 +331,120 @@ execvp(const char *file, char *const *argv) {
 	return rc;
 }
 
+int
+execvpe(const char *file, char *const *argv, char *const *envp) {
+	sigset_t saved;
+
+	int rc = -1;
+	PROFILE_START;
+
+	if (!pseudo_check_wrappers() || !real_execvpe) {
+		/* rc was initialized to the "failure" value */
+		pseudo_enosys("execvpe");
+		PROFILE_DONE;
+		return rc;
+	}
+
+	pseudo_debug(PDBGF_WRAPPER, "called: execvpe\n");
+	pseudo_sigblock(&saved);
+	if (pseudo_getlock()) {
+		errno = EBUSY;
+		sigprocmask(SIG_SETMASK, &saved, NULL);
+		PROFILE_DONE;
+		return -1;
+	}
+
+	int save_errno;
+
+	/* exec*() use this to restore the sig mask */
+	pseudo_saved_sigmask = saved;
+	rc = wrap_execvpe(file, argv, envp);
+
+	save_errno = errno;
+	pseudo_droplock();
+	sigprocmask(SIG_SETMASK, &saved, NULL);
+	pseudo_debug(PDBGF_WRAPPER, "completed: execvpe\n");
+	errno = save_errno;
+	PROFILE_DONE;
+	return rc;
+}
+
+int
+fexecve(int fd, char *const *argv, char *const *envp) {
+	sigset_t saved;
+
+	int rc = -1;
+	PROFILE_START;
+
+	if (!pseudo_check_wrappers() || !real_fexecve) {
+		/* rc was initialized to the "failure" value */
+		pseudo_enosys("fexecve");
+		PROFILE_DONE;
+		return rc;
+	}
+
+	pseudo_debug(PDBGF_WRAPPER, "called: fexecve\n");
+	pseudo_sigblock(&saved);
+	if (pseudo_getlock()) {
+		errno = EBUSY;
+		sigprocmask(SIG_SETMASK, &saved, NULL);
+		PROFILE_DONE;
+		return -1;
+	}
+
+	int save_errno;
+
+	/* exec*() use this to restore the sig mask */
+	pseudo_saved_sigmask = saved;
+	rc = wrap_fexecve(fd, argv, envp);
+
+	save_errno = errno;
+	pseudo_droplock();
+	sigprocmask(SIG_SETMASK, &saved, NULL);
+	pseudo_debug(PDBGF_WRAPPER, "completed: fexecve\n");
+	errno = save_errno;
+	PROFILE_DONE;
+	return rc;
+}
+
+int
+execveat(int dirfd, const char *path, char *const *argv, char *const *envp, int flags) {
+	sigset_t saved;
+
+	int rc = -1;
+	PROFILE_START;
+
+	if (!pseudo_check_wrappers() || !real_execveat) {
+		/* rc was initialized to the "failure" value */
+		pseudo_enosys("execveat");
+		PROFILE_DONE;
+		return rc;
+	}
+
+	pseudo_debug(PDBGF_WRAPPER, "called: execveat\n");
+	pseudo_sigblock(&saved);
+	if (pseudo_getlock()) {
+		errno = EBUSY;
+		sigprocmask(SIG_SETMASK, &saved, NULL);
+		PROFILE_DONE;
+		return -1;
+	}
+
+	int save_errno;
+
+	/* exec*() use this to restore the sig mask */
+	pseudo_saved_sigmask = saved;
+	rc = wrap_execveat(dirfd, path, argv, envp, flags);
+
+	save_errno = errno;
+	pseudo_droplock();
+	sigprocmask(SIG_SETMASK, &saved, NULL);
+	pseudo_debug(PDBGF_WRAPPER, "completed: execveat\n");
+	errno = save_errno;
+	PROFILE_DONE;
+	return rc;
+}
+
 /* no profiling in fork because it wouldn't work anyway
  * half the time
  */
@@ -398,6 +512,33 @@ wrap_execvp(const char *file, char *const *argv) {
 	int rc = -1;
 
 #include "guts/execvp.c"
+
+	return rc;
+}
+
+static int
+wrap_execvpe(const char *file, char *const *argv, char *const *envp) {
+	int rc = -1;
+
+#include "guts/execvpe.c"
+
+	return rc;
+}
+
+static int
+wrap_fexecve(int fd, char *const *argv, char *const *envp) {
+	int rc = -1;
+
+#include "guts/fexecve.c"
+
+	return rc;
+}
+
+static int
+wrap_execveat(int dirfd, const char *path, char *const *argv, char *const *envp, int flags) {
+	int rc = -1;
+
+#include "guts/execveat.c"
 
 	return rc;
 }
