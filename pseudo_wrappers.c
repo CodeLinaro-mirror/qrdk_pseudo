@@ -58,6 +58,7 @@ static pthread_t pseudo_mutex_holder;
 static int pseudo_mutex_recursion = 0;
 static int pseudo_getlock(void);
 static void pseudo_droplock(void);
+static int pseudo_lock_held(void);
 static size_t pseudo_dechroot(char *, size_t);
 static void pseudo_sigblock(sigset_t *);
 
@@ -224,6 +225,11 @@ pseudo_getlock(void) {
 			return -1;
 		}
 	}
+}
+
+static int
+pseudo_lock_held(void) {
+	return pthread_equal(pseudo_mutex_holder, pthread_self());
 }
 
 static void

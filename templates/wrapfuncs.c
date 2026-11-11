@@ -20,6 +20,7 @@ ${maybe_skip}
 ${type}
 ${name}(${decl_args}) {
 	sigset_t saved;
+	int nested;
 	${variadic_decl}
 	${rc_decl}
 	${paths_decl}
@@ -44,11 +45,17 @@ ${maybe_async_skip}
 	}
 
 	pseudo_debug(PDBGF_WRAPPER, "wrapper called: ${name}\n");
-	pseudo_sigblock(&saved);
+	/* If this thread already holds the lock, an outer wrapper has
+	 * already blocked signals, so don't block and restore them again.
+	 */
+	nested = pseudo_lock_held();
+	if (!nested)
+		pseudo_sigblock(&saved);
 	pseudo_debug(PDBGF_WRAPPER | PDBGF_VERBOSE, "${name} - signals blocked, obtaining lock\n");
 	if (pseudo_getlock()) {
 		errno = EBUSY;
-		sigprocmask(SIG_SETMASK, &saved, NULL);
+		if (!nested)
+			sigprocmask(SIG_SETMASK, &saved, NULL);
 		pseudo_debug(PDBGF_WRAPPER, "${name} failed to get lock, giving EBUSY.\n");
 		PROFILE_DONE;
 		${def_return}
@@ -66,8 +73,11 @@ ${maybe_async_skip}
 			pseudo_debug(PDBGF_SYSCALL, "${name} ignored path, calling real syscall.\n");
 			${rc_assign} (*real_${name})(${call_args});
 		} else {
-			/* exec*() use this to restore the sig mask */
-			pseudo_saved_sigmask = saved;
+			/* exec*() use this to restore the sig mask; a
+			 * nested call keeps the outer wrapper's mask.
+			 */
+			if (!nested)
+				pseudo_saved_sigmask = saved;
 			${path_lock_begin}${rc_assign} wrap_$name(${call_args});${path_lock_end}
 		}
 	}
@@ -76,7 +86,8 @@ quick_exit:
 	__attribute__((unused));
 	save_errno = errno;
 	pseudo_droplock();
-	sigprocmask(SIG_SETMASK, &saved, NULL);
+	if (!nested)
+		sigprocmask(SIG_SETMASK, &saved, NULL);
 	pseudo_debug(PDBGF_WRAPPER | PDBGF_VERBOSE, "${name} - yielded lock, restored signals\n");
 	/* not strerror(), which can hang on systems using locale data for it */
 	pseudo_debug(PDBGF_WRAPPER, "wrapper completed: ${name} returns ${rc_format} (errno: %d)\n", ${rc_value}, save_errno);

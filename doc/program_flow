@@ -62,7 +62,7 @@ libpseudo execution flow:
 			return enosys
 		variadic setup (if necessary)
 		if pseudo_disabled  return real_*()
-		pseudo_sigblock
+		pseudo_sigblock (unless this thread already holds the lock)
 		pseudo_getlock
 		if antimagic  rc = real_*()
 		else
@@ -74,7 +74,7 @@ libpseudo execution flow:
 				drop path lock
 		variadic end (if necessary)
 		pseudo_droplock
-		unmask signals
+		unmask signals (if they were blocked above)
 		return rc
 
 pseudo execution flow:
