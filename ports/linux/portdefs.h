@@ -34,7 +34,6 @@ GLIBC_COMPAT_SYMBOL(memcpy,2.0);
 #include <sys/prctl.h>
 #include <linux/seccomp.h>
 #include <sys/mount.h>
-#include <linux/mount.h>
 
 /* close_range()'s flags, and unshare(), are only declared by glibc under
  * _GNU_SOURCE, which pseudo does not build with. <linux/close_range.h> is
@@ -93,11 +92,15 @@ extern int unshare(int flags);
 #define SYS_open_tree __NR_open_tree
 #endif
 
-/* OPEN_TREE_CLONE may be missing from older host headers.
+/* The new mount API is only in <sys/mount.h> from glibc 2.36, and
+ * <linux/mount.h> is missing from older kernel headers (before 5.2), so
+ * don't rely on either.  OPEN_TREE_CLONE is kernel ABI, and struct
+ * mount_attr is only used through pointers, so it can stay incomplete.
  */
 #ifndef OPEN_TREE_CLONE
 #define OPEN_TREE_CLONE (1U << 0)
 #endif
+struct mount_attr;
 
 #ifndef SYS_open_tree_attr
 
