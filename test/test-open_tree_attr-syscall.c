@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/syscall.h>
-#include <linux/mount.h>
 #include <sys/stat.h>
 
 #ifndef SYS_open_tree_attr
