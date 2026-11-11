@@ -77,6 +77,11 @@ syscall(long number, ...) {
 #ifdef SYS_seccomp
 	    && number != SYS_seccomp
 #endif
+#ifdef SYS_landlock_create_ruleset
+	    && number != SYS_landlock_create_ruleset
+	    && number != SYS_landlock_add_rule
+	    && number != SYS_landlock_restrict_self
+#endif
 	    ) {
 		if (!real_syscall)
 			real_syscall = (long (*)(long, ...)) dlsym(RTLD_NEXT, "syscall");
@@ -108,6 +113,19 @@ syscall(long number, ...) {
         if (pseudo_disabled) {
                 goto call_syscall;
         }
+
+#ifdef SYS_landlock_create_ruleset
+	/* A Landlock sandbox also binds libpseudo, which then can't reach the
+	 * server (YOCTO #16493), so report Landlock as unsupported.
+	 */
+	if (number == SYS_landlock_create_ruleset ||
+	    number == SYS_landlock_add_rule ||
+	    number == SYS_landlock_restrict_self) {
+		pseudo_debug(PDBGF_SYSCALL, "syscall, refusing landlock.\n");
+		errno = ENOSYS;
+		return -1;
+	}
+#endif
 
 #ifdef SYS_openat2
 	/* There is a CVE patch (CVE-2025-45582) to tar 1.34 in Centos Stream which
