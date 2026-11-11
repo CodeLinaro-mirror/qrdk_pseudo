@@ -19,7 +19,7 @@ opt_memory=
 opt_async=
 opt_xattr=
 opt_xattrdb=false
-opt_profile=false
+opt_profiling=false
 opt_passwd_fallback='""'
 
 compile_x86_32=-m32
