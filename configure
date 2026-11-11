@@ -232,6 +232,31 @@ if [ -z "$opt_sqlite_lib" ]; then
     opt_sqlite_lib=$opt_lib
 fi
 
+# pseudo uses __has_include, which needs GCC 5 or later.  clang reports
+# itself as GCC 4.2.1, so only check its support for __has_include.
+if ! cc_version=$(${CC:-cc} -dumpversion 2>/dev/null); then
+    echo >&2 "Error: can't run the C compiler '${CC:-cc}'."
+    exit 1
+fi
+cc_check=$(mktemp -d "${TMPDIR:-/tmp}/pseudo-configure.XXXXXX") || exit 1
+cat > "$cc_check/cc_check.c" <<EOF
+#if defined(__clang__)
+# if !defined(__has_include)
+#  error clang without __has_include
+# endif
+#elif !defined(__GNUC__) || __GNUC__ < 5
+# error GCC older than 5
+#endif
+int pseudo_cc_check;
+EOF
+if ! cc_check_out=$(${CC:-cc} -c -o "$cc_check/cc_check.o" "$cc_check/cc_check.c" 2>&1); then
+    echo >&2 "Error: pseudo requires GCC 5 or later (${CC:-cc} reports version $cc_version)."
+    echo >&2 "$cc_check_out"
+    rm -rf "$cc_check"
+    exit 1
+fi
+rm -rf "$cc_check"
+
 if [ ! -f "${opt_sqlite}/include/sqlite3.h" ]; then
     echo >&2 "SQLite3 headers not found in at ${opt_sqlite}/include/sqlite3.h. Please check that SQLite3 and SQLite3 headers are installed."
     exit 1
