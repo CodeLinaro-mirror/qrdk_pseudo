@@ -240,15 +240,18 @@ prctl(int option, ...) {
 		return rc;
 	}
 
-#ifdef SECCOMP_SET_MODE_FILTER
+#ifdef PR_SET_SECCOMP
 	/* pseudo and seccomp are incompatible as pseudo uses different syscalls
-	 * so pretend to enable seccomp but really do nothing */
+	 * so pretend to enable seccomp but really do nothing.  prctl() takes
+	 * SECCOMP_MODE_*, not the SECCOMP_SET_MODE_* values seccomp() takes.
+	 */
 	if (option == PR_SET_SECCOMP) {
 		unsigned long cmd;
 		va_start(ap, option);
 		cmd = va_arg(ap, unsigned long);
 		va_end(ap);
-		if (cmd == SECCOMP_SET_MODE_FILTER) {
+		if (cmd == SECCOMP_MODE_STRICT || cmd == SECCOMP_MODE_FILTER) {
+		    pseudo_debug(PDBGF_SYSCALL, "prctl, faking seccomp.\n");
 		    return 0;
 		}
 	}
