@@ -726,9 +726,13 @@ pseudo_append_element(char *newpath, char *root, size_t allocated, char **pcurre
 	/* if we are not on the last element of a path and supposed to leave
 	 * it alone (for SYMLINK_NOFOLLOW type cases), and we are not trying to
 	 * go further under a regular file, we want to know whether this is a symlink.
-	 * either way, we want to update buf to show the correct state of the file.
+	 * otherwise, update buf to show the correct state of the file.  An
+	 * element we leave alone is always the last one, so nothing uses
+	 * its state and we skip the lstat.
 	 */
-	if (!pseudo_real_lstat || (pseudo_real_lstat(newpath, buf) == -1)) {
+	if (leave_this) {
+		buf->st_mode = 0;
+	} else if (!pseudo_real_lstat || (pseudo_real_lstat(newpath, buf) == -1)) {
 		// if we can't stat it, zero mode so we don't think it's
 		// known to be a link or a regular file.
 		buf->st_mode = 0;
@@ -846,6 +850,7 @@ pseudo_append_elements(char *newpath, char *root, size_t allocated, char **curre
 	/* a shareable buffer so we can cache stat results while walking the path */
 	PSEUDO_STATBUF buf;
 	buf.st_mode = 0;
+	int stat_base = 0;
 	const char * start = path;
 	if (!newpath || !root ||
 	    !current || !*current ||
@@ -861,16 +866,18 @@ pseudo_append_elements(char *newpath, char *root, size_t allocated, char **curre
 		 * then get shared by anything we call.
 		 */
 		sbuf = &buf;
-		if (*current > root) {
-			if (!pseudo_real_lstat || (pseudo_real_lstat(newpath, sbuf) == -1)) {
-				sbuf->st_mode = 0;
-			}
-		} else {
-			/* Don't call lstat on an empty path, or at all when we
-			 * know that "root" is always directory-like.
-			 */
-			sbuf->st_mode = S_IFDIR;
-		}
+		/* Don't call lstat on an empty path, or at all when we
+		 * know that "root" is always directory-like.
+		 */
+		sbuf->st_mode = S_IFDIR;
+		/* The base is only stat'd if the first element is "", "."
+		 * or "..", the only cases where it matters whether the base
+		 * is really a directory.  For any other name, lstat of the
+		 * appended element fails with ENOTDIR under a non-directory,
+		 * giving the same result as stat'ing the base.
+		 */
+		if (*current > root)
+			stat_base = 1;
 	}
 	pseudo_debug(PDBGF_PATH | PDBGF_VERBOSE, "paes: newpath %s, element list <%.*s>\n",
 		newpath, (int) elen, path);
@@ -889,6 +896,15 @@ pseudo_append_elements(char *newpath, char *root, size_t allocated, char **curre
 		 */
 		pseudo_debug(PDBGF_PATH | PDBGF_VERBOSE, "element to add: '%.*s'\n",
 			(int) this_elen, path);
+		if (stat_base) {
+			stat_base = 0;
+			if (this_elen == 0 || (path[0] == '.' &&
+			    (this_elen == 1 || (this_elen == 2 && path[1] == '.')))) {
+				if (!pseudo_real_lstat || (pseudo_real_lstat(newpath, sbuf) == -1)) {
+					sbuf->st_mode = 0;
+				}
+			}
+		}
 		if (pseudo_append_element(newpath, root, allocated, current, path, this_elen, sbuf, leave_this) == -1) {
 			retval = -1;
 			break;
