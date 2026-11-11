@@ -146,12 +146,12 @@ process running as the build user.
 libpseudo has to keep reaching the server and the filesystem on behalf
 of the program it is loaded into, so pseudo turns off the ways a
 program can restrict itself (ports/linux/pseudo_wrappers.c).  Requests
-to install a seccomp filter through syscall() or prctl() report success
-without installing anything, and the Landlock system calls fail with
-ENOSYS, as if the kernel did not support Landlock.  A program that
-sandboxes itself, such as xz, runs unsandboxed under pseudo, and one
-that refuses to run without its sandbox fails.  This doesn't apply to
-programs pseudo does not intercept (see section 1), and the Landlock
+to enter seccomp strict or filter mode through syscall() or prctl()
+report success without doing anything, and the Landlock system calls
+fail with ENOSYS, as if the kernel did not support Landlock.  A program
+that sandboxes itself, such as xz, runs unsandboxed under pseudo, and
+one that refuses to run without its sandbox fails.  This doesn't apply
+to programs pseudo does not intercept (see section 1), and the Landlock
 calls reach the kernel while PSEUDO_DISABLED is set.
 
 

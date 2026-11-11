@@ -104,7 +104,7 @@ syscall(long number, ...) {
 		va_start(ap, number);
 		cmd = va_arg(ap, unsigned long);
 		va_end(ap);
-		if (cmd == SECCOMP_SET_MODE_FILTER) {
+		if (cmd == SECCOMP_SET_MODE_STRICT || cmd == SECCOMP_SET_MODE_FILTER) {
 		    return 0;
 		}
 	}
