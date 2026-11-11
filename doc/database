@@ -16,13 +16,13 @@ FILES:
 	rdev (integer)
 	deleting (integer)
 
-There are two indexes on the file database, one by path and one by device
-and inode.  Earlier versions of pseudo ignored symlinks, but this turned
-out to create problems; specifically, if you had a symlink to a directory,
-and accessed a file through that, it could create unexpected results.  Names
-are fully canonicalized by the client, except for functions which would
-operate directly on a symlink, in which case the last path component is not
-replaced.
+There are two indexes on the files table, one on path, device and inode,
+and one on device and inode.  Earlier versions of pseudo ignored symlinks,
+but this turned out to create problems; specifically, if you had a symlink
+to a directory, and accessed a file through that, it could create
+unexpected results.  Names are fully canonicalized by the client, except
+for functions which would operate directly on a symlink, in which case the
+last path component is not replaced.
 
 It is not an error to have multiple entries with the same device and inode.
 Updates to uid, gid, mode, or rdev are applied to every file with the same
@@ -31,21 +31,43 @@ to obtain the device and inode, then modifying all matching records.
 
 If a file shows up with no name (this should VERY rarely happen), it is stored
 in the database with the special name 'NAMELESS FILE'.  This name can never
-be sent by the client (all names are sent as absolute paths).  If a laterThe
+be sent by the client (all names are sent as absolute paths).  If a later
 request comes in with a valid name, the 'NAMELESS FILE' is renamed to it so
 it can be unlinked later.
+
+XATTRS:
+	id (unique key)
+	dev (integer)
+	ino (integer)
+	name (varchar)
+	value (varchar)
+
+The xattrs table holds extended attributes, keyed by device and inode
+(indexed on dev, ino and on dev, ino, name), so they are shared by every
+name for the same file.
+
+MIGRATIONS:
+	id (unique key)
+	version (integer)
+	stamp (integer, seconds since epoch)
+	sql (varchar)
+
+Both databases have a migrations table recording which schema updates
+have been applied, so an older database can be brought up to date when
+it is opened.
 
 The "deleting" field is used to track files which are in the midst of
 being possibly-deleted.  The issue is that if you issue an unlink database
 operation only after removing a file, there is a window during which
 another program can genuinely create a new file with the same name or
 inode, and that request can reach the daemon before the unlink operation
-does.  To address this, three operations are addded:  may-unlink, did-unlink,
+does.  To address this, three operations are added:  may-unlink, did-unlink,
 and cancel-unlink.  The may-unlink operation tags a file for possible
-deletion, setting "deleting" to 1.  A clash involving a file marked for
-deletion is resolved by deleting the existing database entry without
-complaint.  A did-unlink operation deletes a file ONLY if it is marked
-for deletion.  A cancel-unlink operation unmarks a file for deletion.
+deletion, setting "deleting" to the requesting client's ID.  A clash
+involving a file marked for deletion is resolved by deleting the existing
+database entry without complaint.  A did-unlink operation deletes a file
+ONLY if it is marked for deletion by the same client.  A cancel-unlink
+operation unmarks a file for deletion.
 
 You can still have a race condition here, but it seems a lot less likely.
 The failure would be:
@@ -67,12 +89,13 @@ Rename operations use a pair of paths, separated by a null byte; the client
 sends the total length of both names (plus the null byte), and the server
 knows to split them around the null byte.  The impact of a rename on things
 contained within a directory is handled in SQL:
-	UPDATE files SET path = replace(path, oldpath, newpath) WHERE
-		path = oldpath;
-	UPDATE files SET path = replace(path, oldpath, newpath) WHERE
-		(path > oldpath || '/') && (path < oldpath || '0);
+	UPDATE files SET path = ?, deleting = 0 WHERE path = ?;
+	UPDATE files SET path = replace(path, ?, ?), deleting = 0
+		WHERE (path > (? || '/') AND path < (? || '0'));
+with oldpath and newpath bound to the parameters.
 That is to say, anything which either starts with "oldpath/" or is exactly
-equal to oldpath gets renamed, with oldpath replaced by newpath... The
+equal to oldpath gets renamed, with oldpath replaced by newpath, and any
+pending deletion mark is cleared... The
 unusual constructions are to address two key issues.  One is that an "OR"
 would prevent proper use of the index.  The other is that a pattern,
 such as "LIKE oldpath || '/%'", would prevent use of the index (at least
@@ -83,8 +106,9 @@ after it.
 LOGS
 	id (unique key)
 	stamp (integer, seconds since epoch)
-	operation (id from operations, can be null)
+	op (operation id, can be null)
 	client (integer identifier)
+	fd (integer)
 	dev (integer)
 	ino (integer)
 	mode (integer)
@@ -93,17 +117,20 @@ LOGS
 	severity (severity id)
 	text (anything else you wanted to say)
 	tag (identifier for operations)
+	uid (integer)
+	gid (integer)
 	access (integer)
+	program (varchar, name of the client program)
+	type (integer, message type)
 
 The log database contains a primary table (logs).  As of this writing it
 is not indexed, because indexing is expensive during writes (common, for
 the log database) and very few queries are usually run.
 
-The log database also contains, when created, tables of operations, result
-types, and severities.  These exist so that queries can be run against
-a log database even if these values might have changed in a newer build
-of pseudo.  The tables of operations and severities are just id->name pairs.
-No enforcement of the relation is currently provided.
+The op, result, severity and type fields hold the numeric values of
+pseudo's internal enumerations; pseudolog translates them back to names.
+No tables of these names are stored in the database, so a log database
+should be read with a matching build of pseudolog.
 
 The log database "tag" field, added since the initial release of pseudo,
 is available for tagging operations.  When a client connects to the

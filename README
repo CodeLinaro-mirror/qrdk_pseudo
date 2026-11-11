@@ -22,25 +22,43 @@ NOT an autoconf script.
 
 Configure options:
 	    --prefix=/path/to/install/dir
-	    --with-sqlite=/path/to/sqlite/dir
-	    --bits={32,64}
-	    --suffix=<text>
-	    --enable-static-sqlite
-	    --with-sqlite-lib
 	    --libdir=...
+	    --suffix=<text>
+	    --target=<cpu>
 	    --enable-memory-db
+	    --enable-xattr
+	    --enable-xattrdb
+	    --enable-profiling
 	    --enable-force-async
+	    --with-sqlite=/path/to/sqlite/dir
 	    --with-sqlite-lib=...
 	    --enable-static-sqlite
 	    --with-static-sqlite=...
 	    --with-rpath=...|--without-rpath
+	    --with-passwd-fallback=...|--without-passwd-fallback
 	    --cflags=''
+	    --bits={32,64}
 
-There is no default prefix.  The default for sqlite is /usr, and for
-bits is 32.  You need a reasonably modern sqlite3 -- it has to have
-sqlite3_clear_bindings(), which at least one default sqlite3 install
-did not.  (But that was dated 2006, so I'm not sure this will affect
-most readers.)
+The --enable-* options also accept =yes and =no, and --disable-* is the
+same as --enable-*=no.
+
+There is no default prefix.  The default for sqlite is /usr.  If --bits
+is not given, it is guessed from /bin/sh, falling back to 32.  SQLite 3.6
+or later is required.
+
+The --target option sets the CPU the wrappers are generated for (used to
+pick the right syscall numbers); it defaults to the build machine.
+
+Extended attribute support (--enable-xattr) is enabled by default if
+getfattr works on the build machine.  --enable-xattrdb stores extended
+attributes in the database rather than on the files, and implies
+--enable-xattr.  --enable-profiling builds the pseudo_profile utility and
+the client profiling support.
+
+--with-passwd-fallback sets the directory whose etc/passwd and etc/group
+are used when no chroot or PSEUDO_PASSWD file is found; it defaults to /
+(that is, the host's /etc).  --without-passwd-fallback disables the
+fallback.
 
 The suffix value can be used to append a particular text string to file
 names (such as libpseudo<suffix>.so).  This was used in the WR environment

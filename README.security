@@ -91,7 +91,7 @@ that protection in several ways:
 
 * Several wrappers check a path and then act on it by path in a second
   step.  For example, fchmodat (ports/unix/guts/fchmodat.c) stats the
-  path and later calls the real chmod on the same path, and mknodat
+  path and later calls the real fchmodat() on the same path, and mknodat
   (ports/linux/guts/__xmknodat.c) removes the path again by name if the
   database update fails.
 

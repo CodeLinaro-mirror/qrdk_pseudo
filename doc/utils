@@ -20,7 +20,7 @@ pseudo
 	is 30 seconds, or whatever you specified with "-t" or PSEUDO_OPTS
 	when starting it) or run "pseudo -S".  The server will not exit
 	while clients are active, but requesting a shutdown sets the timeout
-	to one second, so it will exit quickly after the last client
+	to 3 seconds, so it will exit quickly after the last client
 	disconnects.
 
 libpseudo.so
@@ -31,3 +31,7 @@ libpseudo.so
 
 pseudodb
 	allows browsing and modification of db (not implemented)
+
+pseudo_profile
+	Only built with --enable-profiling.  Reads and summarizes the
+	profiling data written by clients when PSEUDO_PROFILE_PATH is set.

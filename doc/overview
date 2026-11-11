@@ -50,16 +50,17 @@ server sends back failure or success notices.
 
 As a fairly typical example, the progress of a stat(2) call is:
 
-* The __xstat() wrapper is called.  This wrapper checks the version argument
-  against the _STAT_VER constant in case we some day run into a system where
-  programs call stat with different versions of struct stat.  (Hasn't happened
-  yet.)
-* The __xstat() wrapper calls the __fxstatat() wrapper, which in turn calls
+* The stat() wrapper (or __xstat(), for programs built against older glibc)
+  is called.
+* That wrapper calls the __fxstatat() wrapper, which in turn calls
   the __fxstatat64() wrapper (this allows us to have only one copy of the
   logic shared among all the path-based stat syscalls).
 * The __fxstatat64() wrapper calls the underlying __fxstatat64() function,
   which has been mapped to the name real___fxstatat64().  (If this fails,
-  the wrapper function returns immediately.)
+  the wrapper function returns immediately.)  It then checks the version
+  argument against the _STAT_VER constant, in case we some day run into a
+  system where programs call stat with different versions of struct stat,
+  and returns the real result unmodified if it doesn't match.
 * The __fxstatat64() wrapper passes the resulting stat buffer and path to the
   client code and asks for a response.
 * The client code converts the stat buffer into a pseudo_msg_t message
@@ -87,8 +88,6 @@ as mkstemp, fopen, and freopen.  These are wrapped because, in glibc, they
 call internal functions which make inline assembly syscalls, rather than
 calling the syscall entry points.  In each case, the wrapper makes the real
 call without intervention, then snoops the results for a file descriptor to
-path mapping.  (This would be done to opendir/fdopendir/closedir as well,
-but the DIR * is opaque and can't be snooped practically.  This is why
-some versions of 'rm -r' can, at higher diagnostic levels, generate a slew
-of warnings about file descriptors being reopened when no close was
-observed.)
+path mapping.  opendir() and closedir() are handled the same way, using
+dirfd() to find the descriptor behind the opaque DIR *.  fdopendir() is not
+wrapped; it uses a descriptor pseudo already knows about.

@@ -65,7 +65,13 @@ libpseudo execution flow:
 		pseudo_sigblock
 		pseudo_getlock
 		if antimagic  rc = real_*()
-		else rc = wrap_*()
+		else
+			fix paths (canonicalize path arguments)
+			if path is ignored  rc = real_*()
+			else
+				take path lock (if path_lock is set)
+				rc = wrap_*()
+				drop path lock
 		variadic end (if necessary)
 		pseudo_droplock
 		unmask signals

@@ -12,15 +12,17 @@ are invoked with absolute, canonical, paths.
 A few calls are then modified.  For instance, when readlink() returns
 a link, it strips a leading prefix looking like the chroot directory;
 when symlink() creates a link, if the link path is absolute, the chroot
-directory is prepended to it.
+directory is prepended to it.  (Setting PSEUDO_NOSYMLINKEXP to a value
+other than 0 disables this symlink() behavior.)
 
 This behavior, which may seem surprising, is an attempt to produce
 path resolution equivalent to what would normally happen when
 canonicalizing a path using real chroot; if you create a link to /tmp
 while in a chroot environment, following that link should yield
-<chroot>/tmp.  Arguably, now that we are intercepting nearly every
-incoming path, we should just prepend the chroot path when following
-absolute symlinks -- this may get revisited.
+<chroot>/tmp.  Pseudo's own path canonicalization also resolves absolute
+symlink targets relative to the chroot directory (stripping the chroot
+prefix first if the target already has it), so links created without the
+prefix are still followed correctly inside the chroot.
 
 Similarly, when glob() is called, the path to be globbed has the
 chroot directory prepended, and then the results have any leading
